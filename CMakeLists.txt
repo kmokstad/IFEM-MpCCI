@@ -1,0 +1,52 @@
+project(IFEM-MpCCI)
+
+cmake_minimum_required(VERSION 3.0)
+
+# Add local modules
+list(APPEND CMAKE_MODULE_PATH 
+            ${PROJECT_SOURCE_DIR}
+            ${PROJECT_SOURCE_DIR}/../../cmake/Modules)
+
+# Required packages
+if (NOT IFEM_CONFIGURED)
+  find_package(IFEM REQUIRED)
+  include_directories(${IFEM_INCLUDE_DIRS})
+  add_definitions(${IFEM_DEFINITIONS})
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${IFEM_CXX_FLAGS}")
+endif(NOT IFEM_CONFIGURED)
+
+find_package(MpCCI REQUIRED)
+
+set(ELASTICITY_DIR ${PROJECT_SOURCE_DIR}/../IFEM-Elasticity)
+if(NOT EXISTS ${ELASTICITY_DIR})
+  set(ELASTICITY_DIR ${PROJECT_SOURCE_DIR}/../Elasticity)
+endif()
+
+include_directories(${IFEM_INCLUDES} ../Common ${PROJECT_SOURCE_DIR}
+                    ${ELASTICITY_DIR} ${ELASTICITY_DIR}/Linear)
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+
+# Testing
+enable_testing()
+include(IFEMTesting)
+
+if(NOT TARGET Elasticity)
+  add_subdirectory(${ELASTICITY_DIR} Elasticity)
+endif()
+
+add_executable(IFEM-MpCCI main_MpCCI.C
+                          MpCCIJob.C)
+list(APPEND CHECK_SOURCES main_MpCCI.C MpCCIJob.C)
+
+target_link_libraries(IFEM-MpCCI Elasticity MpCCI::MpCCI
+                                 IFEMAppCommon ${IFEM_LIBRARIES})
+
+# Installation
+install(TARGETS IFEM-MpCCI DESTINATION bin)
+
+if(IFEM_COMMON_APP_BUILD)
+  set(TEST_APPS ${TEST_APPS} PARENT_SCOPE)
+else()
+  add_check_target()
+endif()
