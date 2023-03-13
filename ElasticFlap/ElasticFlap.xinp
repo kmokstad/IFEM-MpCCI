@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<simulation>
+
+  <geometry dim="3"
+            sets="true"
+            X0="0.00527 -0.022.92 -0.023"
+            Lx="0.00194" Ly="0.04632" Lz="0.048">
+    <refine patch="1" u="1" v="1" w="1"/>
+  </geometry>
+
+  <elasticity>
+    <isotropic E="2.068e11" nu="0.29" rho="7820.0"/>
+    <boundaryconditions>
+      <dirichlet set="Face3" comp="123"/>
+    </boundaryconditions>
+  </elasticity>
+
+</simulation>
