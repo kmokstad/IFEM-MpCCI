@@ -13,6 +13,7 @@
 #include "MpCCIJob.h"
 #include "SIM3D.h"
 #include "SIMLinEl.h"
+#include "SIMsolution.h"
 
 #include "gtest/gtest.h"
 
@@ -49,7 +50,15 @@ TEST(TestMpCCIJob, MeshData)
   if (!sim.initSystem(sim.opt.solver,1))
     return;
 
-  MpCCI::Job job(sim);
+  SIMsolution sol;
+  sol.initSolution(sim.getNoDOFs());
+  RealArray displacement(sim.getNoDOFs());
+  double val = 0.0;
+  for (double& d : displacement)
+    d = val++;
+  sol.setSolution(displacement);
+
+  MpCCI::Job job(sim, sol);
 
   const auto info1 = job.meshData("Face1");
 
@@ -86,4 +95,10 @@ TEST(TestMpCCIJob, MeshData)
   };
 
   EXPECT_EQ(info1.coords, coords1);
+
+  std::vector<double> displ(info1.nodes.size()*3);
+  MpCCI::Job::extractData(info1, sol.getSolution(), displ.data());
+  for (size_t i = 0; i < info1.nodes.size(); ++i)
+    for (size_t j = 0; j < 3; ++j)
+      EXPECT_EQ(displ[3*i+j], 3*info1.nodes[i]+j);
 }

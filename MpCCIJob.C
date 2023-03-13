@@ -15,6 +15,7 @@
 #include "ASMbase.h"
 #include "IFEM.h"
 #include "SIMinput.h"
+#include "SIMsolution.h"
 
 #include <mpcci.h>
 
@@ -27,6 +28,7 @@ void exit_mpcci_job ()
 {
     std::terminate();
 }
+
 
 void mpcci_printer (const char* s, int len)
 {
@@ -41,8 +43,9 @@ namespace MpCCI {
 Job* Job::globalInstance = nullptr;
 bool Job::dryRun = false;
 
-Job::Job (SIMinput& simulator) :
-  sim(simulator)
+
+Job::Job (SIMinput& simulator, SIMsolution& solution) :
+  sim(simulator), slv(solution)
 {
   globalInstance = this;
   if (dryRun)
@@ -80,7 +83,7 @@ Job::Job (SIMinput& simulator) :
     nullptr,                            // getPointValues()
     nullptr,                            // getLineNodeValues()
     nullptr,                            // getLineElemValues()
-    nullptr,                            // getFaceNodeValues()
+    getDisplacements,                   // getFaceNodeValues()
     nullptr,                            // getFaceElemValues()
     nullptr,                            // getVoluNodeValues()
     nullptr,                            // getVoluElemValues()
@@ -142,13 +145,11 @@ Job::~Job ()
 
 int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
 {
-  const MeshInfo info = globalInstance->meshData(part->name);
+  MeshInfo& info = globalInstance->meshInfo;
+  info = globalInstance->meshData(part->name);
 
-   MPCCI_MSG_INFO1
-   (
-      "Coupling grid definition for component \"%s\" ...\n",
-      MPCCI_PART_NAME(part)
-   );
+   MPCCI_MSG_INFO1("Coupling grid definition for component \"%s\" ...\n",
+                   MPCCI_PART_NAME(part));
 
    int ret = smpcci_defp(server,
                          MPCCI_PART_MESHID(part),
@@ -181,6 +182,39 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
 
   return ret;
 }
+
+
+int Job::getDisplacements (const MPCCI_PART* part,
+                           const MPCCI_QUANT* quant,
+                           void* values)
+{
+   switch (MPCCI_QUANT_SMETHOD(quant))
+   {
+      case MPCCI_QSM_DIRECT: /* direct load/store values */
+
+         /* distinguish between the different quantities */
+         switch (MPCCI_QUANT_QID(quant))
+         {
+            case MPCCI_QID_NPOSITION:
+              extractData(globalInstance->meshInfo,
+                          globalInstance->slv.getSolution(),
+                          static_cast<double*>(values));
+              break;
+            default:
+               MPCCI_MSG_FATAL0("Quantity not supported\n");
+               break;
+         }
+         break;
+
+      default:
+         MPCCI_MSG_FATAL0("Unsupported storage method.");
+         break;
+   }
+   MPCCI_MSG_INFO0("finished send values...\n");
+
+   return sizeof(double); /* return the size of the value data type */
+}
+
 
 Job::MeshInfo Job::meshData(std::string_view name) const
 {
@@ -219,6 +253,15 @@ Job::MeshInfo Job::meshData(std::string_view name) const
 
   result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
   return result;
+}
+
+void Job::extractData (const MeshInfo& info,
+                       const std::vector<double>& sol,
+                       double* valptr)
+{
+  for (const int idx : info.nodes)
+    for (size_t i = 0; i < 3; ++i)
+      *valptr++ = sol[idx*3+i];
 }
 
 }

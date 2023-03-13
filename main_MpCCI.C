@@ -13,28 +13,13 @@
 
 #include "IFEM.h"
 #include "Profiler.h"
-#include "SIMLinEl.h"
+#include "SIMMpCCIStructure.h"
 #include "SIM3D.h"
 
 #include "MpCCIJob.h"
 
 #include <iostream>
 #include <stdexcept>
-
-
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (char* cline)
-{
-  return false;
-}
-
-
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (const TiXmlElement* child,
-                                        const std::string& type)
-{
-  return false;
-}
 
 
 /*!
@@ -55,7 +40,7 @@ int main (int argc, char** argv)
   IFEM::Init(argc,argv,"MpCCI adapter");
   utl::profiler->stop("Initialization");
 
- SIMLinEl<SIM3D> sim("Structure solver", false);
+  SIMMpCCIStructure<SIM3D> sim;
 
   if (!sim.read(argv[1]))
     return 2;
@@ -67,7 +52,7 @@ int main (int argc, char** argv)
     return 4;
 
   try {
-    MpCCI::Job mpjob(sim);
+    MpCCI::Job mpjob(sim, sim);
   } catch(const std::runtime_error& err) {
      std::cerr << err.what() << std::endl;
      return 1;

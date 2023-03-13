@@ -20,6 +20,7 @@
 #include <vector>
 
 class SIMinput;
+class SIMsolution;
 
 namespace MpCCI {
 
@@ -32,7 +33,7 @@ public:
   static bool dryRun; //!< To perform a dry run - used in tests
 
   //! \brief The constructor initializes the MpCCI job.
-  Job(SIMinput& simulator);
+  Job(SIMinput& simulator, SIMsolution& solu);
 
   //! \brief The destructor deinitializes the MpCCI job.
   ~Job();
@@ -40,6 +41,11 @@ public:
   //! \brief Called during MpCCI_Init.
   //! \details Used to defines nodes and elements
   static int definePart(MPCCI_SERVER* server, MPCCI_PART* part);
+
+  //! \brief Called to transfer displacement to MpCCI server.
+  static int getDisplacements(const MPCCI_PART* part,
+                              const MPCCI_QUANT* quant,
+                              void* values);
 
   //! \brief Struct for holding a linear FEM mesh definition.
   struct MeshInfo {
@@ -52,10 +58,17 @@ public:
   //! \brief Returns the linear FEM mesh for a given topology set.
   MeshInfo meshData(std::string_view name) const;
 
+  //! \brief Extracts data from solution.
+  static void extractData(const MeshInfo& info,
+                          const std::vector<double>& data,
+                          double* values);
+
 private:
   MPCCI_JOB* mpcciJob{nullptr}; //!< MpCCI job info structure
   MPCCI_TINFO mpcciTinfo{0}; //!< MpCCI time step information
+  MeshInfo meshInfo; //!< Coupling mesh info
   SIMinput& sim; //!< Reference to IFEM simulator
+  SIMsolution& slv; //!< Reference to solution container
 };
 
 }

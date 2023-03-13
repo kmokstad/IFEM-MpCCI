@@ -35,14 +35,14 @@ if(NOT TARGET Elasticity)
   add_subdirectory(${ELASTICITY_DIR} Elasticity)
 endif()
 
-add_library(MpCCICommon MpCCIJob.C)
-target_link_libraries(MpCCICommon MpCCI::MpCCI)
+add_library(MpCCICommon MpCCIJob.C SIMMpCCIStructure.C)
+target_link_libraries(MpCCICommon MpCCI::MpCCI IFEMAppCommon ${IFEM_LIBRARIES})
 
 add_executable(IFEM-MpCCI main_MpCCI.C)
 list(APPEND CHECK_SOURCES main_MpCCI.C MpCCIJob.C)
 
-target_link_libraries(IFEM-MpCCI Elasticity MpCCI::MpCCI
-                      MpCCICommon IFEMAppCommon ${IFEM_LIBRARIES})
+target_link_libraries(IFEM-MpCCI MpCCICommon Elasticity MpCCI::MpCCI
+                      IFEMAppCommon ${IFEM_LIBRARIES})
 
 # Installation
 install(TARGETS IFEM-MpCCI DESTINATION bin)
