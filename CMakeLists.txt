@@ -3,7 +3,7 @@ project(IFEM-MpCCI)
 cmake_minimum_required(VERSION 3.0)
 
 # Add local modules
-list(APPEND CMAKE_MODULE_PATH 
+list(APPEND CMAKE_MODULE_PATH
             ${PROJECT_SOURCE_DIR}
             ${PROJECT_SOURCE_DIR}/../../cmake/Modules)
 
@@ -35,15 +35,22 @@ if(NOT TARGET Elasticity)
   add_subdirectory(${ELASTICITY_DIR} Elasticity)
 endif()
 
-add_executable(IFEM-MpCCI main_MpCCI.C
-                          MpCCIJob.C)
+add_library(MpCCICommon MpCCIJob.C)
+target_link_libraries(MpCCICommon MpCCI::MpCCI)
+
+add_executable(IFEM-MpCCI main_MpCCI.C)
 list(APPEND CHECK_SOURCES main_MpCCI.C MpCCIJob.C)
 
 target_link_libraries(IFEM-MpCCI Elasticity MpCCI::MpCCI
-                                 IFEMAppCommon ${IFEM_LIBRARIES})
+                      MpCCICommon IFEMAppCommon ${IFEM_LIBRARIES})
 
 # Installation
 install(TARGETS IFEM-MpCCI DESTINATION bin)
+
+IFEM_add_test_app(${PROJECT_SOURCE_DIR}/Test/*.C
+                  ${PROJECT_SOURCE_DIR}/Test
+                  MpCCI 0
+                  Elasticity MpCCICommon IFEMAppCommon ${IFEM_LIBRARIES})
 
 if(IFEM_COMMON_APP_BUILD)
   set(TEST_APPS ${TEST_APPS} PARENT_SCOPE)

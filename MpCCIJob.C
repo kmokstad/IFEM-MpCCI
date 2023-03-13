@@ -12,7 +12,9 @@
 //==============================================================================
 #include "MpCCIJob.h"
 
+#include "ASMbase.h"
 #include "IFEM.h"
+#include "SIMinput.h"
 
 #include <mpcci.h>
 
@@ -34,10 +36,18 @@ void mpcci_printer (const char* s, int len)
 
 }
 
+namespace MpCCI {
 
-MpCCIJob::MpCCIJob (SIMbase& simulator) :
+Job* Job::globalInstance = nullptr;
+bool Job::dryRun = false;
+
+Job::Job (SIMinput& simulator) :
   sim(simulator)
 {
+  globalInstance = this;
+  if (dryRun)
+    return;
+
   static MPCCI_DRIVER driver =
   {
     (unsigned)sizeof(MPCCI_DRIVER),     /* this_size: sizeof(this) */
@@ -62,7 +72,7 @@ MpCCIJob::MpCCIJob (SIMbase& simulator) :
     nullptr,                            // partUpdate()
     nullptr,                            // appendParts()
     nullptr,                            // getPartRemeshState()
-    nullptr,                            // definePart(
+    definePart,                         // definePart(
     nullptr,                            // partInfo()
     nullptr,                            // getNodes()
     nullptr,                            // getElems()
@@ -97,7 +107,7 @@ MpCCIJob::MpCCIJob (SIMbase& simulator) :
   ampcci_tinfo_init(&mpcciTinfo, nullptr);
   mpcciTinfo.mpcci_state = mpcciTinfo.mpcci_used = 0;
   mpcciTinfo.iter = 0;
-  mpcciTinfo.dt   = 0.0;
+
   mpcciTinfo.time = 0.0;
 
   mpcci_cinfo_init(&cinfo, &mpcciTinfo);
@@ -124,8 +134,91 @@ MpCCIJob::MpCCIJob (SIMbase& simulator) :
 }
 
 
-MpCCIJob::~MpCCIJob ()
+Job::~Job ()
 {
   if (mpcciJob)
     mpcci_quit(&mpcciJob);
+}
+
+int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
+{
+  const MeshInfo info = globalInstance->meshData(part->name);
+
+   MPCCI_MSG_INFO1
+   (
+      "Coupling grid definition for component \"%s\" ...\n",
+      MPCCI_PART_NAME(part)
+   );
+
+   int ret = smpcci_defp(server,
+                         MPCCI_PART_MESHID(part),
+                         MPCCI_PART_PARTID(part),
+                         MPCCI_PART_CSYS  (part),
+                         MPCCI_PART_NNODES(part),
+                         MPCCI_PART_NELEMS(part),
+                         MPCCI_PART_NAME  (part));
+
+   // Send the nodes definition for this coupled component
+   ret = smpcci_pnod(server,
+                     MPCCI_PART_MESHID(part),  /* mesh id */
+                     MPCCI_PART_PARTID(part),  /* part id */
+                     MPCCI_PART_CSYS  (part),  /* coordinates system */
+                     MPCCI_PART_NNODES(part),  /* no. of nodes */
+                     info.coords.data(),               /* node coordinates */
+                     static_cast<unsigned>(sizeof(double)),  /* data type of coordinates */
+                     info.nodes.data(),              /* node ids */
+                     nullptr);
+
+   // Send the element definiton for this coupled component
+   ret = smpcci_pels(server,
+                     MPCCI_PART_MESHID(part),    /* mesh id */
+                     MPCCI_PART_PARTID(part),    /* part id */
+                     MPCCI_PART_NELEMS(part),    /* number of elements */
+                     info.types[0],               /* first element type */
+                     info.types.data(),                  /* element types */
+                     info.elms.data(),                  /* nodes of the element */
+                     nullptr);                      /* element IDs */
+
+  return ret;
+}
+
+Job::MeshInfo Job::meshData(std::string_view name) const
+{
+  const auto& props = globalInstance->sim.getEntity(std::string(name));
+  MeshInfo result;
+  for (const auto& item : props) {
+    std::vector<int> locNodes;
+    globalInstance->sim.getTopItemNodes(item, locNodes);
+    const ASMbase* pch = globalInstance->sim.getPatch(item.patch);
+    for (const int node : locNodes) {
+      size_t pnode = pch->getNodeIndex(node,true);
+      const Vec3 c = pch->getCoord(pnode);
+      result.coords.push_back(c.x);
+      result.coords.push_back(c.y);
+      result.coords.push_back(c.z);
+    }
+    IntVec locElms;
+    pch->getBoundaryElms(item.item, 0, locElms);
+    static const std::vector<std::array<int,4>> eNodes {
+        {0, 2, 6, 4},
+        {1, 3, 7, 5},
+        {0, 1, 5, 4},
+        {2, 3, 7, 6},
+        {1, 3, 7, 6},
+        {2, 3, 7, 6}
+    };
+    for (const auto& elm : locElms) {
+      const auto& elmNodes = pch->getElementNodes(elm+1);
+      for (const auto& idx : eNodes[item.item-1])
+        result.elms.push_back(elmNodes[idx]);
+    }
+    for (int& n : locNodes)
+      --n;
+    result.nodes.insert(result.nodes.end(), locNodes.begin(), locNodes.end());
+  }
+
+  result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
+  return result;
+}
+
 }

@@ -67,7 +67,7 @@ int main (int argc, char** argv)
     return 4;
 
   try {
-    MpCCIJob mpjob(sim);
+    MpCCI::Job mpjob(sim);
   } catch(const std::runtime_error& err) {
      std::cerr << err.what() << std::endl;
      return 1;
