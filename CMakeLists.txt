@@ -36,7 +36,7 @@ if(NOT TARGET Elasticity)
 endif()
 
 add_library(MpCCICommon MpCCIJob.C SIMMpCCIStructure.C)
-target_link_libraries(MpCCICommon MpCCI::MpCCI IFEMAppCommon ${IFEM_LIBRARIES})
+target_link_libraries(MpCCICommon Elasticity MpCCI::MpCCI IFEMAppCommon ${IFEM_LIBRARIES})
 
 add_executable(IFEM-MpCCI main_MpCCI.C)
 list(APPEND CHECK_SOURCES main_MpCCI.C MpCCIJob.C)

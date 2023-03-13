@@ -44,8 +44,8 @@ Job* Job::globalInstance = nullptr;
 bool Job::dryRun = false;
 
 
-Job::Job (SIMinput& simulator, SIMsolution& solution) :
-  sim(simulator), slv(solution)
+Job::Job (SIMinput& simulator, DataHandler& hndler) :
+  sim(simulator), handler(hndler)
 {
   globalInstance = this;
   if (dryRun)
@@ -83,7 +83,7 @@ Job::Job (SIMinput& simulator, SIMsolution& solution) :
     nullptr,                            // getPointValues()
     nullptr,                            // getLineNodeValues()
     nullptr,                            // getLineElemValues()
-    getDisplacements,                   // getFaceNodeValues()
+    getFaceNodeValues,                  // getFaceNodeValues()
     nullptr,                            // getFaceElemValues()
     nullptr,                            // getVoluNodeValues()
     nullptr,                            // getVoluElemValues()
@@ -184,39 +184,25 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
 }
 
 
-int Job::getDisplacements (const MPCCI_PART* part,
-                           const MPCCI_QUANT* quant,
-                           void* values)
+int Job::getFaceNodeValues (const MPCCI_PART* part,
+                            const MPCCI_QUANT* quant,
+                            void* values)
 {
-   switch (MPCCI_QUANT_SMETHOD(quant))
-   {
-      case MPCCI_QSM_DIRECT: /* direct load/store values */
+  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
+    throw std::runtime_error("Invalid quantity method requested " +
+                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
 
-         /* distinguish between the different quantities */
-         switch (MPCCI_QUANT_QID(quant))
-         {
-            case MPCCI_QID_NPOSITION:
-              extractData(globalInstance->meshInfo,
-                          globalInstance->slv.getSolution(),
-                          static_cast<double*>(values));
-              break;
-            default:
-               MPCCI_MSG_FATAL0("Quantity not supported\n");
-               break;
-         }
-         break;
+  globalInstance->handler.writeData(MPCCI_QUANT_QID(quant),
+                                    globalInstance->meshInfo.nodes,
+                                    static_cast<double*>(values));
 
-      default:
-         MPCCI_MSG_FATAL0("Unsupported storage method.");
-         break;
-   }
    MPCCI_MSG_INFO0("finished send values...\n");
 
    return sizeof(double); /* return the size of the value data type */
 }
 
 
-Job::MeshInfo Job::meshData(std::string_view name) const
+MeshInfo Job::meshData(std::string_view name) const
 {
   const auto& props = globalInstance->sim.getEntity(std::string(name));
   MeshInfo result;
@@ -253,15 +239,6 @@ Job::MeshInfo Job::meshData(std::string_view name) const
 
   result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
   return result;
-}
-
-void Job::extractData (const MeshInfo& info,
-                       const std::vector<double>& sol,
-                       double* valptr)
-{
-  for (const int idx : info.nodes)
-    for (size_t i = 0; i < 3; ++i)
-      *valptr++ = sol[idx*3+i];
 }
 
 }

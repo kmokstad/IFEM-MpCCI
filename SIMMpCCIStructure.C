@@ -1,7 +1,7 @@
 // $Id$
 //==============================================================================
 //!
-//! \file SIMThermoElasticity.C
+//! \file SIMpCCIStructure.C
 //!
 //! \date Aug 05 2014
 //!
@@ -13,24 +13,15 @@
 
 #include "SIMMpCCIStructure.h"
 
-#include "SIMLinEl.h"
+#include "ElasticityUtils.h"
+#include "LinearElasticity.h"
 
+#include "AlgEqSystem.h"
 #include "Profiler.h"
+#include "SAM.h"
 #include "SIM3D.h"
 
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (char* cline)
-{
-  return false;
-}
-
-
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (const TiXmlElement* child,
-                                        const std::string& type)
-{
-  return false;
-}
+#include <mpcci_quantities.h>
 
 
 template<class Dim>
@@ -65,6 +56,42 @@ Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
                                           Elastic::GIpointsVTF);
 
   return dynamic_cast<Elasticity*>(Dim::myProblem);
+}
+
+template<class Dim>
+bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
+                                                   const TimeDomain&)
+{
+  if (p != Dim::myProblem)
+    return false;
+
+  SystemVector* b = Dim::myEqSys->getVector();
+
+  for (const auto& [node, load] : loadMap) {
+    Dim::mySam->assembleSystem(*b, load.data(), node);
+  }
+
+  return true;
+}
+
+template<class Dim>
+void SIMMpCCIStructure<Dim>::writeData (int quant_id,
+                                      const std::vector<int>& nodes,
+                                      double* valptr) const
+{
+  if (quant_id != MPCCI_QID_NPOSITION)
+    throw std::runtime_error("Asked to put an unknown quantity " + std::to_string(quant_id));
+
+  for (const int idx : nodes)
+    for (size_t i = 0; i < Dim::dimension; ++i)
+      *valptr++ = this->getSolution()[idx*Dim::dimension+i];
+}
+
+template<class Dim>
+void SIMMpCCIStructure<Dim>::getData (int quant_id,
+                                      const std::vector<int>& nodes,
+                                      const double* valptr)
+{
 }
 
 template class SIMMpCCIStructure<SIM3D>;

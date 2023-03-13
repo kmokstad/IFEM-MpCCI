@@ -14,18 +14,20 @@
 #ifndef _SIM_MPCCI_STRUCTURE_H_
 #define _SIM_MPCCI_STRUCTURE_H_
 
+#include "MpCCIDataHandler.h"
 #include "SIMElasticityWrap.h"
+
+class IntegrandBase;
 
 
 /*!
   \brief Driver wrapping the elasticity solver with a solveStep.
 */
 
-template<class Dim> class SIMMpCCIStructure : public SIMElasticityWrap<Dim>
+template<class Dim> class SIMMpCCIStructure : public SIMElasticityWrap<Dim>,
+                                              public MpCCI::DataHandler
 {
 public:
-  typedef bool SetupProps; //!< Dummy declaration (no setup properties required)
-
   //! \brief Default constructor.
   SIMMpCCIStructure();
 
@@ -37,6 +39,18 @@ public:
 
   //! \brief Returns the actual integrand.
   Elasticity* getIntegrand() override;
+
+  //! \brief Get data from MpCCI server.
+  void getData(int quant_id, const std::vector<int>& nodes, const double* data) override;
+
+  //! \brief Write data to MpCCI server.
+  void writeData(int quant_id, const std::vector<int>& nodes, double* data) const override;
+
+protected:
+  //! \brief Assemble the nodal interface forces from the fluid solver.
+  bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
+
+  std::map<int, std::array<double,3>> loadMap;
 };
 
 #endif

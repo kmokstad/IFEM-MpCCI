@@ -12,24 +12,10 @@
 
 #include "MpCCIJob.h"
 #include "SIM3D.h"
-#include "SIMLinEl.h"
+#include "SIMMpCCIStructure.h"
 #include "SIMsolution.h"
 
 #include "gtest/gtest.h"
-
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (char* cline)
-{
-  return false;
-}
-
-
-template<>
-bool SIMLinEl<SIM3D>::parseDimSpecific (const TiXmlElement* child,
-                                        const std::string& type)
-{
-  return false;
-}
 
 constexpr auto input = R"(
 <geometry dim="3" sets="true">
@@ -41,7 +27,7 @@ constexpr auto input = R"(
 TEST(TestMpCCIJob, MeshData)
 {
   MpCCI::Job::dryRun = true;
-  SIMLinEl<SIM3D> sim("Structure solver", false);
+  SIMMpCCIStructure<SIM3D> sim;
   sim.loadXML(input);
 
   if (!sim.preprocess())
@@ -50,15 +36,15 @@ TEST(TestMpCCIJob, MeshData)
   if (!sim.initSystem(sim.opt.solver,1))
     return;
 
-  SIMsolution sol;
-  sol.initSolution(sim.getNoDOFs());
+  sim.initSolution(sim.getNoDOFs());
+
   RealArray displacement(sim.getNoDOFs());
   double val = 0.0;
   for (double& d : displacement)
     d = val++;
-  sol.setSolution(displacement);
+  sim.setSolution(displacement);
 
-  MpCCI::Job job(sim, sol);
+  MpCCI::Job job(sim, sim);
 
   const auto info1 = job.meshData("Face1");
 
@@ -97,7 +83,7 @@ TEST(TestMpCCIJob, MeshData)
   EXPECT_EQ(info1.coords, coords1);
 
   std::vector<double> displ(info1.nodes.size()*3);
-  MpCCI::Job::extractData(info1, sol.getSolution(), displ.data());
+  sim.writeData(MPCCI_QID_NPOSITION, info1.nodes, displ.data());
   for (size_t i = 0; i < info1.nodes.size(); ++i)
     for (size_t j = 0; j < 3; ++j)
       EXPECT_EQ(displ[3*i+j], 3*info1.nodes[i]+j);
