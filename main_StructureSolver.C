@@ -65,7 +65,6 @@ int main (int argc, char** argv)
   if (args.newmark) {
     NewmarkDriver<NewmarkSIM> solver(sim);
     solver.initPrm();
-    solver.initSolution(sim.getNoDOFs(), 3);
     if (!solver.read(infile))
       return 5;
 
@@ -77,6 +76,8 @@ int main (int argc, char** argv)
 
     sim.opt.print(IFEM::cout,true) << std::endl;
 
+    solver.initSolution(sim.getNoDOFs(), 3);
+    solver.initPrm();
     std::unique_ptr<DataExporter> exporter;
     if (sim.opt.dumpHDF5(infile)) {
       exporter = std::make_unique<DataExporter>(true);

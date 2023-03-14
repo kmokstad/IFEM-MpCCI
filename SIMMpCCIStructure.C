@@ -52,6 +52,7 @@ bool SIMMpCCIStructure<Dim>::solveStep (TimeStep& tp)
   return true;
 }
 
+
 template<class Dim>
 Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
 {
@@ -62,6 +63,7 @@ Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
 
   return dynamic_cast<Elasticity*>(Dim::myProblem);
 }
+
 
 template<class Dim>
 bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
@@ -78,6 +80,7 @@ bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
   return true;
 }
 
+
 template<class Dim>
 void SIMMpCCIStructure<Dim>::writeData (int quant_id,
                                       const std::vector<int>& nodes,
@@ -91,6 +94,7 @@ void SIMMpCCIStructure<Dim>::writeData (int quant_id,
     for (size_t i = 0; i < Dim::dimension; ++i)
       *valptr++ = this->getSolution()[idx*Dim::dimension+i];
 }
+
 
 template<class Dim>
 void SIMMpCCIStructure<Dim>::getData (int quant_id,
