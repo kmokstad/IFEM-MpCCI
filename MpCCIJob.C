@@ -15,7 +15,6 @@
 #include "ASMbase.h"
 #include "IFEM.h"
 #include "SIMinput.h"
-#include "SIMsolution.h"
 
 #include <mpcci.h>
 
@@ -189,7 +188,7 @@ int Job::getFaceNodeValues (const MPCCI_PART* part,
                             void* values)
 {
   if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
-    throw std::runtime_error("Invalid quantity method requested " +
+    throw std::runtime_error("Invalid quantity method requested in getFaceNodeValues " +
                              std::to_string(MPCCI_QUANT_SMETHOD(quant)));
 
   globalInstance->handler.writeData(MPCCI_QUANT_QID(quant),
@@ -199,6 +198,28 @@ int Job::getFaceNodeValues (const MPCCI_PART* part,
    MPCCI_MSG_INFO0("finished send values...\n");
 
    return sizeof(double); /* return the size of the value data type */
+}
+
+
+void Job::putFaceNodeValues (const MPCCI_PART* part,
+                             const MPCCI_QUANT* quant,
+                             void* values)
+/*****************************************************************************/
+{
+   MPCCI_MSG_INFO0("entered receive values...\n");
+
+   /* check whether this is the appropriate method */
+
+   MPCCI_MSG_ASSERT(MPCCI_PART_IS_FACE(part));
+
+  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
+    throw std::runtime_error("Invalid quantity method requested in putFaceNodeValues " +
+                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
+
+  globalInstance->handler.getData(MPCCI_QUANT_QID(quant),
+                                  globalInstance->meshInfo.nodes,
+                                  static_cast<double*>(values));
+  MPCCI_MSG_INFO0("finished receive values...\n");
 }
 
 

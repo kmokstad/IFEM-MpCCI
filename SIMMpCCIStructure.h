@@ -46,11 +46,14 @@ public:
   //! \brief Write data to MpCCI server.
   void writeData(int quant_id, const std::vector<int>& nodes, double* data) const override;
 
+  //! \brief Returns a const reference to configured loads.
+  const std::map<int, Vec3>& getLoads() const { return loadMap; }
+
 protected:
   //! \brief Assemble the nodal interface forces from the fluid solver.
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
 
-  std::map<int, std::array<double,3>> loadMap;
+  std::map<int, Vec3> loadMap;
 };
 
 #endif

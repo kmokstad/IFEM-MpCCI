@@ -51,10 +51,15 @@ public:
   //! \details Used to defines nodes and elements
   static int definePart(MPCCI_SERVER* server, MPCCI_PART* part);
 
-  //! \brief Called to transfer to data to MpCCI server.
+  //! \brief Called to transfer data to MpCCI server.
   static int getFaceNodeValues(const MPCCI_PART* part,
                                const MPCCI_QUANT* quant,
                                void* values);
+
+  //! \brief Called to transfer from MpCCI server.
+  static void putFaceNodeValues(const MPCCI_PART* part,
+                                const MPCCI_QUANT* quant,
+                                void* values);
 
   //! \brief Returns the linear FEM mesh for a given topology set.
   MeshInfo meshData(std::string_view name) const;

@@ -17,6 +17,8 @@
 
 #include "gtest/gtest.h"
 
+#include <numeric>
+
 constexpr auto input = R"(
 <geometry dim="3" sets="true">
   <refine patch="1" u="1" v="1" w="1"/>
@@ -87,4 +89,15 @@ TEST(TestMpCCIJob, MeshData)
   for (size_t i = 0; i < info1.nodes.size(); ++i)
     for (size_t j = 0; j < 3; ++j)
       EXPECT_EQ(displ[3*i+j], 3*info1.nodes[i]+j);
+
+  std::iota(displ.begin(), displ.end(), 0);
+  sim.getData(MPCCI_QID_WALLFORCE, info1.nodes, displ.data());
+  int idx = 0;
+  for (const auto& [node, frc] : sim.getLoads()) {
+    EXPECT_EQ(node, info1.nodes[idx]);
+    EXPECT_EQ(frc[0], idx*3);
+    EXPECT_EQ(frc[1], idx*3+1);
+    EXPECT_EQ(frc[2], idx*3+2);
+    ++idx;
+  }
 }
