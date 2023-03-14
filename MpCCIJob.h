@@ -22,6 +22,7 @@
 #include <vector>
 
 class SIMinput;
+class TimeStep;
 
 namespace MpCCI {
 
@@ -61,13 +62,19 @@ public:
                                 const MPCCI_QUANT* quant,
                                 void* values);
 
-  //! \brief Returns the linear FEM mesh for a given topology set.
-  MeshInfo meshData(std::string_view name) const;
-
   //! \brief Extracts data from solution.
   static void extractData(const MeshInfo& info,
                           const std::vector<double>& data,
                           double* values);
+
+  //! \brief Obtain time stepping information.
+  const TimeStep& getNextTimeStep();
+
+  //! \brief Execute data transfer.
+  int transfer(int status);
+
+  //! \brief Returns the linear FEM mesh for a given topology set.
+  MeshInfo meshData(std::string_view name) const;
 
 private:
   MPCCI_JOB* mpcciJob{nullptr}; //!< MpCCI job info structure

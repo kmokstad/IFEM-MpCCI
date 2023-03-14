@@ -20,15 +20,20 @@
 #include "Profiler.h"
 #include "SAM.h"
 #include "SIM3D.h"
+#include "TimeStep.h"
 
 #include <mpcci_quantities.h>
 
 
 template<class Dim>
-SIMMpCCIStructure<Dim>::SIMMpCCIStructure ()
+SIMMpCCIStructure<Dim>::SIMMpCCIStructure (bool newmark)
 {
   Dim::myHeading = "Structure solver";
 }
+
+
+template<class Dim>
+SIMMpCCIStructure<Dim>::~SIMMpCCIStructure () = default;
 
 
 template<class Dim>
@@ -60,16 +65,15 @@ Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
 
 template<class Dim>
 bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
-                                                   const TimeDomain&)
+                                                    const TimeDomain&)
 {
   if (p != Dim::myProblem)
     return false;
 
   SystemVector* b = Dim::myEqSys->getVector();
 
-  for (const auto& [node, load] : loadMap) {
+  for (const auto& [node, load] : loadMap)
     Dim::mySam->assembleSystem(*b, load.ptr(), node);
-  }
 
   return true;
 }
@@ -80,7 +84,8 @@ void SIMMpCCIStructure<Dim>::writeData (int quant_id,
                                       double* valptr) const
 {
   if (quant_id != MPCCI_QID_NPOSITION)
-    throw std::runtime_error("Asked to write an unknown quantity " + std::to_string(quant_id));
+    throw std::runtime_error("Asked to write an unknown quantity " +
+                             std::to_string(quant_id));
 
   for (const int idx : nodes)
     for (size_t i = 0; i < Dim::dimension; ++i)
@@ -93,12 +98,13 @@ void SIMMpCCIStructure<Dim>::getData (int quant_id,
                                       const double* valptr)
 {
   if (quant_id != MPCCI_QID_WALLFORCE)
-    throw std::runtime_error("Asked to read an unknown quantity " + std::to_string(quant_id));
+    throw std::runtime_error("Asked to read an unknown quantity " +
+                             std::to_string(quant_id));
   loadMap.clear();
   for (int node : nodes) {
     Vec3 frc;
-    for (size_t i = 0; i < Dim::dimension; ++i)
-      frc[i] = *valptr++;
+    std::copy(valptr, valptr + Dim::dimension, &frc[0]);
+    valptr += Dim::dimension;
     loadMap.emplace(node, frc);
   }
 }

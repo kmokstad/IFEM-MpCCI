@@ -11,12 +11,13 @@
 //!
 //==============================================================================
 
+#include "MpCCIArgs.h"
+#include "SIMMpCCIStructure.h"
+#include "SIMSolverMpCCI.h"
+
 #include "IFEM.h"
 #include "Profiler.h"
-#include "SIMMpCCIStructure.h"
 #include "SIM3D.h"
-
-#include "MpCCIJob.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -31,18 +32,34 @@
 
 int main (int argc, char** argv)
 {
-  if (argc < 1) {
-      std::cout << "Need one parameter, the input file to use." << std::endl;
-      return 1;
-  }
   Profiler prof(argv[0]);
   utl::profiler->start("Initialization");
+  char* infile = nullptr;
   IFEM::Init(argc,argv,"MpCCI adapter");
+  MpCCIArgs args;
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i] == infile || args.parseArg(argv[i]))
+      ;
+    else if (SIMoptions::ignoreOldOptions(argc,argv,i))
+      ;
+    else if (!infile) {
+      infile = argv[i];
+      if (!args.readXML(infile,false))
+        return 1;
+      i = 0;
+    }
+  }
+
+  if (!infile) {
+    std::cout << "usage: " << argv[0] << " <inputfile>\n";
+    return 1;
+  }
+
   utl::profiler->stop("Initialization");
 
-  SIMMpCCIStructure<SIM3D> sim;
+  SIMMpCCIStructure<SIM3D> sim(args.newmark);
 
-  if (!sim.read(argv[1]))
+  if (!sim.read(infile))
     return 2;
 
   if (!sim.preprocess())
@@ -52,10 +69,16 @@ int main (int argc, char** argv)
     return 4;
 
   try {
-    MpCCI::Job mpjob(sim, sim);
+    if (args.newmark) {
+      SIMSolverMpCCI solver(sim);
+      return solver.solveProblem(infile, "Solving structure problem");
+    } else {
+      SIMSolverMpCCIStat solver(sim);
+      return solver.solveProblem(infile, "Solving structure problem");
+    }
   } catch(const std::runtime_error& err) {
      std::cerr << err.what() << std::endl;
-     return 1;
+     return 5;
   }
 
   return 0;

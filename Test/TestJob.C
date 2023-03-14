@@ -29,7 +29,7 @@ constexpr auto input = R"(
 TEST(TestMpCCIJob, MeshData)
 {
   MpCCI::Job::dryRun = true;
-  SIMMpCCIStructure<SIM3D> sim;
+  SIMMpCCIStructure<SIM3D> sim(false);
   sim.loadXML(input);
 
   if (!sim.preprocess())

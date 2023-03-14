@@ -113,7 +113,7 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
   mpcciTinfo.time = 0.0;
 
   mpcci_cinfo_init(&cinfo, &mpcciTinfo);
-  cinfo.codename = "IFEM-MpCCI";
+  cinfo.codename = "ifem";
   cinfo.flags    = MPCCI_CFLAG_TYPE_SBM|MPCCI_CFLAG_GRID_CURR;
   cinfo.nclients = 1;
   cinfo.nprocs   = 1;
@@ -220,6 +220,27 @@ void Job::putFaceNodeValues (const MPCCI_PART* part,
                                   globalInstance->meshInfo.nodes,
                                   static_cast<double*>(values));
   MPCCI_MSG_INFO0("finished receive values...\n");
+}
+
+
+int Job::transfer(int status)
+{
+  mpcciTinfo.iter = 0;
+  mpcciTinfo.time = 0.0;
+  mpcciTinfo.dt = 0.0;
+  mpcciTinfo.conv_code = status;
+
+  umpcci_conv_cstate(mpcciTinfo.conv_code);
+  int ret = ampcci_transfer(mpcciJob, &mpcciTinfo);
+  if (ret == -1) {
+    MPCCI_MSG_WARNING0("Error during data transfer: Check log file\n");
+    throw std::runtime_error("Error during data transfer. Check log file");
+  } else if (ret == 0) {
+    MPCCI_MSG_INFO0("No data transfer ocurred.+\n");
+    return MPCCI_CONV_STATE_INVALID;
+  }
+
+  return mpcciTinfo.conv_job;
 }
 
 

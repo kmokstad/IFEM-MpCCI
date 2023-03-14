@@ -38,10 +38,15 @@ endif()
 add_library(MpCCICommon MpCCIJob.C SIMMpCCIStructure.C)
 target_link_libraries(MpCCICommon Elasticity MpCCI::MpCCI IFEMAppCommon ${IFEM_LIBRARIES})
 
-add_executable(IFEM-MpCCI main_MpCCI.C)
-list(APPEND CHECK_SOURCES main_MpCCI.C MpCCIJob.C)
+add_executable(IFEM-MpCCI main_MpCCI.C MpCCIArgs.C MpCCIArgs.h SIMSolverMpCCI.h)
+add_executable(StructureSolver main_StructureSolver.C MpCCIArgs.C MpCCIArgs.h)
+
+list(APPEND CHECK_SOURCES main_MpCCI.C main_StructureSolver.C MpCCIJob.C MpCCIArgs.C)
 
 target_link_libraries(IFEM-MpCCI MpCCICommon Elasticity MpCCI::MpCCI
+                      IFEMAppCommon ${IFEM_LIBRARIES})
+
+target_link_libraries(StructureSolver MpCCICommon Elasticity MpCCI::MpCCI
                       IFEMAppCommon ${IFEM_LIBRARIES})
 
 # Installation
@@ -50,7 +55,7 @@ install(TARGETS IFEM-MpCCI DESTINATION bin)
 IFEM_add_test_app(${PROJECT_SOURCE_DIR}/Test/*.C
                   ${PROJECT_SOURCE_DIR}/Test
                   MpCCI 0
-                  Elasticity MpCCICommon IFEMAppCommon ${IFEM_LIBRARIES})
+                  MpCCICommon Elasticity IFEMAppCommon ${IFEM_LIBRARIES})
 
 if(IFEM_COMMON_APP_BUILD)
   set(TEST_APPS ${TEST_APPS} PARENT_SCOPE)

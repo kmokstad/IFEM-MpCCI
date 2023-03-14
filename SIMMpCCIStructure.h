@@ -21,7 +21,7 @@ class IntegrandBase;
 
 
 /*!
-  \brief Driver wrapping the elasticity solver with a solveStep.
+  \brief Driver wrapping the elasticity solver with MpCCI data transfer functions.
 */
 
 template<class Dim> class SIMMpCCIStructure : public SIMElasticityWrap<Dim>,
@@ -29,10 +29,10 @@ template<class Dim> class SIMMpCCIStructure : public SIMElasticityWrap<Dim>,
 {
 public:
   //! \brief Default constructor.
-  SIMMpCCIStructure();
+  explicit SIMMpCCIStructure(bool newmark);
 
   //! \brief The destructor clears the VTF-file pointer.
-  virtual ~SIMMpCCIStructure() = default;
+  virtual ~SIMMpCCIStructure();
 
   //! \brief Computes the solution for the current time step.
   bool solveStep(TimeStep& tp) override;
@@ -53,7 +53,7 @@ protected:
   //! \brief Assemble the nodal interface forces from the fluid solver.
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
 
-  std::map<int, Vec3> loadMap;
+  std::map<int, Vec3> loadMap; //!< Map of boundary forces
 };
 
 #endif
