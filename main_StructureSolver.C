@@ -20,7 +20,6 @@
 #include "Profiler.h"
 #include "SIM3D.h"
 #include "SIMSolver.h"
-#include "TimeStep.h"
 
 #include <iostream>
 #include <stdexcept>

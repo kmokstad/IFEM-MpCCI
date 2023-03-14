@@ -91,7 +91,7 @@ TEST(TestMpCCIJob, MeshData)
       EXPECT_EQ(displ[3*i+j], 3*info1.nodes[i]+j);
 
   std::iota(displ.begin(), displ.end(), 0);
-  sim.getData(MPCCI_QID_WALLFORCE, info1.nodes, displ.data());
+  sim.readData(MPCCI_QID_WALLFORCE, info1.nodes, displ.data());
   int idx = 0;
   for (const auto& [node, frc] : sim.getLoads()) {
     EXPECT_EQ(node, info1.nodes[idx]);

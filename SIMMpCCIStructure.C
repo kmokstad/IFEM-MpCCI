@@ -97,7 +97,7 @@ void SIMMpCCIStructure<Dim>::writeData (int quant_id,
 
 
 template<class Dim>
-void SIMMpCCIStructure<Dim>::getData (int quant_id,
+void SIMMpCCIStructure<Dim>::readData (int quant_id,
                                       const std::vector<int>& nodes,
                                       const double* valptr)
 {

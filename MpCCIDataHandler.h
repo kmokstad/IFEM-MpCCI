@@ -21,8 +21,8 @@ namespace MpCCI {
 //! \brief Abstract data handler for a MpCCI job.
 class DataHandler {
 public:
-  //! \brief Get data from MpCCI server.
-  virtual void getData(int quant_id, const std::vector<int>& nodes, const double* data) = 0;
+  //! \brief Read data from MpCCI server.
+  virtual void readData(int quant_id, const std::vector<int>& nodes, const double* data) = 0;
 
   //! \brief Write data to MpCCI server.
   virtual void writeData(int quand_it, const std::vector<int>& nodes, double* data) const = 0;

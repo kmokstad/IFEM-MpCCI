@@ -216,9 +216,9 @@ void Job::putFaceNodeValues (const MPCCI_PART* part,
     throw std::runtime_error("Invalid quantity method requested in putFaceNodeValues " +
                              std::to_string(MPCCI_QUANT_SMETHOD(quant)));
 
-  globalInstance->handler.getData(MPCCI_QUANT_QID(quant),
-                                  globalInstance->meshInfo.nodes,
-                                  static_cast<double*>(values));
+  globalInstance->handler.readData(MPCCI_QUANT_QID(quant),
+                                   globalInstance->meshInfo.nodes,
+                                   static_cast<double*>(values));
   MPCCI_MSG_INFO0("finished receive values...\n");
 }
 

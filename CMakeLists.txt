@@ -35,19 +35,40 @@ if(NOT TARGET Elasticity)
   add_subdirectory(${ELASTICITY_DIR} Elasticity)
 endif()
 
-add_library(MpCCICommon MpCCIJob.C SIMMpCCIStructure.C)
-target_link_libraries(MpCCICommon Elasticity MpCCI::MpCCI IFEMAppCommon ${IFEM_LIBRARIES})
+add_library(MpCCICommon MpCCIJob.C
+                        MpCCIJob.h
+                        SIMMpCCIStructure.C
+                        SIMMpCCIStructure.h
+                        MpCCIDataHandler.h)
+target_link_libraries(MpCCICommon Elasticity
+                                  MpCCI::MpCCI
+                                  IFEMAppCommon
+                                  ${IFEM_LIBRARIES})
 
-add_executable(IFEM-MpCCI main_MpCCI.C MpCCIArgs.C MpCCIArgs.h SIMSolverMpCCI.h)
-add_executable(StructureSolver main_StructureSolver.C MpCCIArgs.C MpCCIArgs.h)
+add_executable(IFEM-MpCCI main_MpCCI.C
+                          MpCCIArgs.C
+                          MpCCIArgs.h
+                          SIMSolverMpCCI.h)
+add_executable(StructureSolver main_StructureSolver.C
+                               MpCCIArgs.C
+                               MpCCIArgs.h)
 
-list(APPEND CHECK_SOURCES main_MpCCI.C main_StructureSolver.C MpCCIJob.C MpCCIArgs.C)
+list(APPEND CHECK_SOURCES main_MpCCI.C
+                          main_StructureSolver.C
+                          MpCCIJob.C
+                          MpCCIArgs.C)
 
-target_link_libraries(IFEM-MpCCI MpCCICommon Elasticity MpCCI::MpCCI
-                      IFEMAppCommon ${IFEM_LIBRARIES})
+target_link_libraries(IFEM-MpCCI MpCCICommon
+                                 Elasticity
+                                 MpCCI::MpCCI
+                                 IFEMAppCommon
+                                 ${IFEM_LIBRARIES})
 
-target_link_libraries(StructureSolver MpCCICommon Elasticity MpCCI::MpCCI
-                      IFEMAppCommon ${IFEM_LIBRARIES})
+target_link_libraries(StructureSolver MpCCICommon
+                                      Elasticity
+                                      MpCCI::MpCCI
+                                      IFEMAppCommon
+                                      ${IFEM_LIBRARIES})
 
 # Installation
 install(TARGETS IFEM-MpCCI DESTINATION bin)

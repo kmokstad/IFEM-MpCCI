@@ -41,7 +41,7 @@ public:
   Elasticity* getIntegrand() override;
 
   //! \brief Get data from MpCCI server.
-  void getData(int quant_id, const std::vector<int>& nodes, const double* data) override;
+  void readData(int quant_id, const std::vector<int>& nodes, const double* data) override;
 
   //! \brief Write data to MpCCI server.
   void writeData(int quant_id, const std::vector<int>& nodes, double* data) const override;
