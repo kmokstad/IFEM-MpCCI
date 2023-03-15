@@ -37,6 +37,7 @@ void mpcci_printer (const char* s, int len)
 
 }
 
+
 namespace MpCCI {
 
 Job* Job::globalInstance = nullptr;
@@ -56,11 +57,11 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
     MPCCI_CCM_VERSION,                  /* this_version */
     0,                                  /* tact_required bitmask */
     {                                   /* part_description */
+       "POINTS",
        "ELEMENTS",
-       "*BAD*",
-       "*BAD",
-       "*BAD*",
-       "*BAD*",
+       "W",
+       "T",
+       "F",
        "GLOBAL",
        nullptr
     },
@@ -71,7 +72,7 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
     nullptr,                            // beforeRecvAndPut()
     nullptr,                            // afterRecvAndPut()
     nullptr,                            // partSelect()
-    nullptr,                            // partUpdate()
+    partUpdate,                         // partUpdate()
     nullptr,                            // appendParts()
     nullptr,                            // getPartRemeshState()
     definePart,                         // definePart(
@@ -83,15 +84,15 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
     nullptr,                            // getLineNodeValues()
     nullptr,                            // getLineElemValues()
     getFaceNodeValues,                  // getFaceNodeValues()
-    nullptr,                            // getFaceElemValues()
+    getFaceNodeValues,                  // getFaceElemValues()
     nullptr,                            // getVoluNodeValues()
     nullptr,                            // getVoluElemValues()
     nullptr,                            // getGlobalValues()
     nullptr,                            // putPointValues()
     nullptr,                            // putLineNodeValues()
     nullptr,                            // putLineElemValues()
-    nullptr,                            // putFaceNodeValues()
-    nullptr,                            // putFaceElemValues()
+    putFaceNodeValues,                  // putFaceNodeValues()
+    putFaceNodeValues,                  // putFaceElemValues()
     nullptr,                            // putVolumNodeValues()
     nullptr,                            // putVolumElemValues()
     nullptr                             // putGlobalValues()
@@ -142,6 +143,7 @@ Job::~Job ()
     mpcci_quit(&mpcciJob);
 }
 
+
 int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
 {
   MeshInfo& info = globalInstance->meshInfo;
@@ -151,6 +153,9 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
                    MPCCI_PART_NAME(part));
    MPCCI_MSG_INFO1("We have %i nodes\n", int(info.nodes.size()));
    MPCCI_MSG_INFO1("We have %i elms\n", int(info.elms.size() / 4));
+
+   MPCCI_PART_NNODES(part) = info.nodes.size();
+   MPCCI_PART_NELEMS(part) = info.elms.size() / 4;
 
    int ret = smpcci_defp(server,
                          MPCCI_PART_MESHID(part),
@@ -225,6 +230,17 @@ void Job::putFaceNodeValues (const MPCCI_PART* part,
 }
 
 
+int Job::partUpdate(MPCCI_PART* part,
+                    MPCCI_QUANT* quant)
+{
+  MPCCI_PART_NNODES(part) = globalInstance->meshInfo.nodes.size();
+  MPCCI_PART_NELEMS(part) = globalInstance->meshInfo.elms.size() / 4;
+  quant->flags &= ~MPCCI_QFLAG_LOC_MASK;
+  quant->flags |= (MPCCI_QUANT_IS_COORD(quant) ? MPCCI_QFLAG_LOC_VERT : MPCCI_QFLAG_LOC_CELL);
+  return 0;
+}
+
+
 int Job::transfer(int status)
 {
   mpcciTinfo.iter = 0;
@@ -255,13 +271,6 @@ MeshInfo Job::meshData(std::string_view name) const
     std::vector<int> locNodes;
     globalInstance->sim.getTopItemNodes(item, locNodes);
     const ASMbase* pch = globalInstance->sim.getPatch(item.patch);
-    for (const int node : locNodes) {
-      size_t pnode = pch->getNodeIndex(node,true);
-      const Vec3 c = pch->getCoord(pnode);
-      result.coords.push_back(c.x);
-      result.coords.push_back(c.y);
-      result.coords.push_back(c.z);
-    }
     IntVec locElms;
     pch->getBoundaryElms(item.item, 0, locElms);
     static const std::vector<std::array<int,4>> eNodes {
@@ -276,26 +285,41 @@ MeshInfo Job::meshData(std::string_view name) const
       const auto& elmNodes = pch->getElementNodes(elm+1);
       for (const auto& idx : eNodes[item.item-1])
         result.elms.push_back(elmNodes[idx]);
+      result.gelms.emplace_back(elm, item.item);
     }
     for (int& n : locNodes)
       nodes.insert(n-1);
   }
+  result.nodes.reserve(nodes.size());
   std::copy(nodes.begin(), nodes.end(), std::back_inserter(result.nodes));
+  result.coords.reserve(3*result.nodes.size());
+  for (const int node : result.nodes) {
+    const Vec3 c = globalInstance->sim.getNodeCoord(node+1);
+    result.coords.push_back(c.x);
+    result.coords.push_back(c.y);
+    result.coords.push_back(c.z);
+  }
 
   result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
   IFEM::cout << result;
   return result;
 }
 
+
 std::ostream& operator<<(std::ostream& os, const MeshInfo& info)
 {
   os << "MeshInfo: nnod = " << info.nodes.size() << " nelms = " << info.elms.size() / 4;
-  os << "\nNodes: ";
-  for (const int node : info.nodes)
-    os << node << " ";
+  os << "\n== Nodes ==";
+  auto cit = info.coords.begin();
+  for (size_t i = 0; i < info.nodes.size(); ++i) {
+    os << "\n\t" << info.nodes[i] << ": ";
+    for (size_t j = 0; j < 3; ++j)
+      os << *cit++ << " ";
+  }
   auto it = info.elms.begin();
+  os << "\n== Elements ==";
   for (size_t i = 0; i < info.elms.size() / 4; ++i) {
-    os << "\n\tElem " << i+1 << ": ";
+    os << "\n\t" << i << " -> (" << info.gelms[i].first << "," << info.gelms[i].second <<"): ";
     for (size_t j = 0; j < 4; ++j)
         os << *it++ << " ";
   }

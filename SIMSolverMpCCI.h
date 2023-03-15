@@ -49,7 +49,7 @@ public:
 
     int status = MPCCI_CONV_STATE_CONTINUE;
     while ((status = job.transfer(status)) == MPCCI_CONV_STATE_CONTINUE || status == MPCCI_CONV_STATE_CONVERGED) {
-      TimeStep dummy;
+/*      TimeStep dummy;
       if (!this->S1.solveStep(dummy))
         return 2;
 
@@ -58,7 +58,7 @@ public:
         return 4;
 
       if (this->exporter && !this->exporter->dumpTimeLevel())
-        return 5;
+        return 5;*/
     }
 
     return 0;

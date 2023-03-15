@@ -54,6 +54,7 @@ protected:
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
 
   std::map<int, Vec3> loadMap; //!< Map of boundary forces
+  std::vector<int> elemPressures; //!< Element pressure values
 };
 
 #endif

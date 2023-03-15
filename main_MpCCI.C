@@ -68,6 +68,8 @@ int main (int argc, char** argv)
   if (!sim.initSystem(sim.opt.solver,1))
     return 4;
 
+  sim.initSolution(sim.getNoDOFs(),1);
+
   try {
     if (args.newmark) {
       SIMSolverMpCCI solver(sim);

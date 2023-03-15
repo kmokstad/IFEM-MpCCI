@@ -32,6 +32,7 @@ struct MeshInfo {
   std::vector<int> nodes; //!< Global nodes on interface
   std::vector<double> coords; //!< Coordinates for nodes on interface
   std::vector<int> elms; //!< Element node indices on interface
+  std::vector<std::pair<int,int>> gelms; //!< Global element numbers for surface
   std::vector<unsigned> types; //!< Type of each element
 };
 std::ostream& operator<<(std::ostream&, const MeshInfo&);
@@ -53,6 +54,9 @@ public:
   //! \brief Called during MpCCI_Init.
   //! \details Used to defines nodes and elements
   static int definePart(MPCCI_SERVER* server, MPCCI_PART* part);
+
+  //! \brief Called to update part info / quant info.
+  static int partUpdate(MPCCI_PART* part, MPCCI_QUANT* quant);
 
   //! \brief Called to transfer data to MpCCI server.
   static int getFaceNodeValues(const MPCCI_PART* part,

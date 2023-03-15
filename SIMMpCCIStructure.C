@@ -101,15 +101,17 @@ void SIMMpCCIStructure<Dim>::readData (int quant_id,
                                       const std::vector<int>& nodes,
                                       const double* valptr)
 {
-  if (quant_id != MPCCI_QID_WALLFORCE)
+  if (quant_id == MPCCI_QID_WALLFORCE) {
+    loadMap.clear();
+    for (int node : nodes) {
+      Vec3 frc;
+      std::copy(valptr, valptr + Dim::dimension, &frc[0]);
+      valptr += Dim::dimension;
+      loadMap.emplace(node, frc);
+    }
+  } else {
     throw std::runtime_error("Asked to read an unknown quantity " +
                              std::to_string(quant_id));
-  loadMap.clear();
-  for (int node : nodes) {
-    Vec3 frc;
-    std::copy(valptr, valptr + Dim::dimension, &frc[0]);
-    valptr += Dim::dimension;
-    loadMap.emplace(node, frc);
   }
 }
 
