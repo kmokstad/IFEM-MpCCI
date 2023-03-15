@@ -56,9 +56,9 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
     MPCCI_CCM_VERSION,                  /* this_version */
     0,                                  /* tact_required bitmask */
     {                                   /* part_description */
-       "POINT",
+       "ELEMENTS",
        "*BAD*",
-       "*BAD*",
+       "*BAD",
        "*BAD*",
        "*BAD*",
        "GLOBAL",
@@ -114,7 +114,7 @@ Job::Job (SIMinput& simulator, DataHandler& hndler) :
 
   mpcci_cinfo_init(&cinfo, &mpcciTinfo);
   cinfo.codename = "ifem";
-  cinfo.flags    = MPCCI_CFLAG_TYPE_SBM|MPCCI_CFLAG_GRID_CURR;
+  cinfo.flags    = MPCCI_CFLAG_TYPE_FEA|MPCCI_CFLAG_GRID_CURR;
   cinfo.nclients = 1;
   cinfo.nprocs   = 1;
 
@@ -149,21 +149,23 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
 
    MPCCI_MSG_INFO1("Coupling grid definition for component \"%s\" ...\n",
                    MPCCI_PART_NAME(part));
+   MPCCI_MSG_INFO1("We have %i nodes\n", int(info.nodes.size()));
+   MPCCI_MSG_INFO1("We have %i elms\n", int(info.elms.size() / 4));
 
    int ret = smpcci_defp(server,
                          MPCCI_PART_MESHID(part),
                          MPCCI_PART_PARTID(part),
-                         MPCCI_PART_CSYS  (part),
-                         MPCCI_PART_NNODES(part),
-                         MPCCI_PART_NELEMS(part),
+                         MPCCI_CSYS_C3D,
+                         info.nodes.size(),
+                         info.elms.size() / 4,
                          MPCCI_PART_NAME  (part));
 
    // Send the nodes definition for this coupled component
    ret = smpcci_pnod(server,
                      MPCCI_PART_MESHID(part),  /* mesh id */
                      MPCCI_PART_PARTID(part),  /* part id */
-                     MPCCI_PART_CSYS  (part),  /* coordinates system */
-                     MPCCI_PART_NNODES(part),  /* no. of nodes */
+                     MPCCI_CSYS_C3D,
+                     info.nodes.size(),  /* no. of nodes */
                      info.coords.data(),               /* node coordinates */
                      static_cast<unsigned>(sizeof(double)),  /* data type of coordinates */
                      info.nodes.data(),              /* node ids */
@@ -173,7 +175,7 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
    ret = smpcci_pels(server,
                      MPCCI_PART_MESHID(part),    /* mesh id */
                      MPCCI_PART_PARTID(part),    /* part id */
-                     MPCCI_PART_NELEMS(part),    /* number of elements */
+                     info.elms.size() / 4,    /* number of elements */
                      info.types[0],               /* first element type */
                      info.types.data(),                  /* element types */
                      info.elms.data(),                  /* nodes of the element */
@@ -248,6 +250,7 @@ MeshInfo Job::meshData(std::string_view name) const
 {
   const auto& props = globalInstance->sim.getEntity(std::string(name));
   MeshInfo result;
+  std::set<int> nodes;
   for (const auto& item : props) {
     std::vector<int> locNodes;
     globalInstance->sim.getTopItemNodes(item, locNodes);
@@ -266,8 +269,8 @@ MeshInfo Job::meshData(std::string_view name) const
         {1, 3, 7, 5},
         {0, 1, 5, 4},
         {2, 3, 7, 6},
-        {1, 3, 7, 6},
-        {2, 3, 7, 6}
+        {0, 1, 3, 2},
+        {4, 5, 7, 6}
     };
     for (const auto& elm : locElms) {
       const auto& elmNodes = pch->getElementNodes(elm+1);
@@ -275,12 +278,29 @@ MeshInfo Job::meshData(std::string_view name) const
         result.elms.push_back(elmNodes[idx]);
     }
     for (int& n : locNodes)
-      --n;
-    result.nodes.insert(result.nodes.end(), locNodes.begin(), locNodes.end());
+      nodes.insert(n-1);
   }
+  std::copy(nodes.begin(), nodes.end(), std::back_inserter(result.nodes));
 
   result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
+  IFEM::cout << result;
   return result;
+}
+
+std::ostream& operator<<(std::ostream& os, const MeshInfo& info)
+{
+  os << "MeshInfo: nnod = " << info.nodes.size() << " nelms = " << info.elms.size() / 4;
+  os << "\nNodes: ";
+  for (const int node : info.nodes)
+    os << node << " ";
+  auto it = info.elms.begin();
+  for (size_t i = 0; i < info.elms.size() / 4; ++i) {
+    os << "\n\tElem " << i+1 << ": ";
+    for (size_t j = 0; j < 4; ++j)
+        os << *it++ << " ";
+  }
+  os << std::endl;
+  return os;
 }
 
 }

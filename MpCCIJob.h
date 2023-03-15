@@ -18,6 +18,7 @@
 
 #include "MpCCIDataHandler.h"
 
+#include <iosfwd>
 #include <string_view>
 #include <vector>
 
@@ -33,6 +34,7 @@ struct MeshInfo {
   std::vector<int> elms; //!< Element node indices on interface
   std::vector<unsigned> types; //!< Type of each element
 };
+std::ostream& operator<<(std::ostream&, const MeshInfo&);
 
 //! \brief Class handling a MpCCI job.
 //! \details Only a single instance is allowed.
