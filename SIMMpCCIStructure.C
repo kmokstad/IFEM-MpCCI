@@ -11,6 +11,8 @@
 //!
 //==============================================================================
 
+#include "MpCCIJob.h"
+#include "MpCCIPressureLoad.h"
 #include "SIMMpCCIStructure.h"
 
 #include "ElasticityUtils.h"
@@ -21,25 +23,23 @@
 #include "SAM.h"
 #include "SIM3D.h"
 #include "TimeStep.h"
+#include "TractionField.h"
 
 #include <mpcci_quantities.h>
 
+namespace MpCCI {
 
 template<class Dim>
-SIMMpCCIStructure<Dim>::SIMMpCCIStructure (bool newmark)
+SIMStructure<Dim>::SIMStructure ()
 {
-  Dim::myHeading = "Structure solver";
+  Dim::myHeading = "MpCCI Structure solver";
 }
 
 
 template<class Dim>
-SIMMpCCIStructure<Dim>::~SIMMpCCIStructure () = default;
-
-
-template<class Dim>
-bool SIMMpCCIStructure<Dim>::solveStep (TimeStep& tp)
+bool SIMStructure<Dim>::solveStep (TimeStep& tp)
 {
-  PROFILE1("SIMMpCCIStructure::solveStep");
+  PROFILE1("MpCCI::SIMStructure::solveStep");
 
   this->setMode(SIM::STATIC);
   this->setQuadratureRule(Dim::opt.nGauss[0]);
@@ -54,7 +54,7 @@ bool SIMMpCCIStructure<Dim>::solveStep (TimeStep& tp)
 
 
 template<class Dim>
-Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
+Elasticity* SIMStructure<Dim>::getIntegrand ()
 {
   if (!Dim::myProblem)
     Dim::myProblem = new LinearElasticity(Dim::dimension,
@@ -66,8 +66,8 @@ Elasticity* SIMMpCCIStructure<Dim>::getIntegrand ()
 
 
 template<class Dim>
-bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
-                                                    const TimeDomain&)
+bool SIMStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
+                                               const TimeDomain&)
 {
   if (p != Dim::myProblem)
     return false;
@@ -82,37 +82,60 @@ bool SIMMpCCIStructure<Dim>::assembleDiscreteTerms (const IntegrandBase* p,
 
 
 template<class Dim>
-void SIMMpCCIStructure<Dim>::writeData (int quant_id,
-                                      const std::vector<int>& nodes,
-                                      double* valptr) const
+void SIMStructure<Dim>::writeData (int quant_id,
+                                   const MeshInfo& info,
+                                   double* valptr) const
 {
   if (quant_id != MPCCI_QID_NPOSITION)
     throw std::runtime_error("Asked to write an unknown quantity " +
                              std::to_string(quant_id));
 
-  for (const int idx : nodes)
+  for (const int idx : info.nodes)
     for (size_t i = 0; i < Dim::dimension; ++i)
       *valptr++ = this->getSolution()[idx*Dim::dimension+i];
 }
 
 
 template<class Dim>
-void SIMMpCCIStructure<Dim>::readData (int quant_id,
-                                      const std::vector<int>& nodes,
-                                      const double* valptr)
+void SIMStructure<Dim>::readData (int quant_id,
+                                  const MeshInfo& info,
+                                  const double* valptr)
 {
   if (quant_id == MPCCI_QID_WALLFORCE) {
     loadMap.clear();
-    for (int node : nodes) {
+    for (int node : info.nodes) {
       Vec3 frc;
       std::copy(valptr, valptr + Dim::dimension, &frc[0]);
       valptr += Dim::dimension;
       loadMap.emplace(node, frc);
     }
+  } else if (quant_id == MPCCI_QID_ABSPRESSURE) {
+    elemPressures.resize(info.gelms.size());
+    std::copy(valptr, valptr + info.gelms.size(), elemPressures.begin());
   } else {
     throw std::runtime_error("Asked to read an unknown quantity " +
                              std::to_string(quant_id));
   }
 }
 
-template class SIMMpCCIStructure<SIM3D>;
+
+template<class Dim>
+bool SIMStructure<Dim>::addCoupling (std::string_view name,
+                                    const MeshInfo& info)
+{
+  int code = this->getUniquePropertyCode(std::string(name));
+  PressureLoad* load = new PressureLoad(this->getFEModel(), info, elemPressures);
+  this->myTracs[code] = new PressureField(load);
+  if (!this->setPropertyType(code,Property::NEUMANN))
+    return false;
+  for (const Property& prop : this->myProps) {
+    if (prop.pindx == code)
+      this->generateThreadGroups(prop);
+  }
+
+  return true;
+}
+
+template class SIMStructure<SIM3D>;
+
+}

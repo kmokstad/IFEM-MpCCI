@@ -57,7 +57,7 @@ int main (int argc, char** argv)
 
   utl::profiler->stop("Initialization");
 
-  SIMMpCCIStructure<SIM3D> sim(args.newmark);
+  MpCCI::SIMStructure<SIM3D> sim;
 
   if (!sim.read(infile))
     return 2;
@@ -72,10 +72,10 @@ int main (int argc, char** argv)
 
   try {
     if (args.newmark) {
-      SIMSolverMpCCI solver(sim);
+      MpCCI::SIMSolver solver(sim);
       return solver.solveProblem(infile, "Solving structure problem");
     } else {
-      SIMSolverMpCCIStat solver(sim);
+      MpCCI::SIMSolverStat solver(sim);
       return solver.solveProblem(infile, "Solving structure problem");
     }
   } catch(const std::runtime_error& err) {

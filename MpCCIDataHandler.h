@@ -14,18 +14,24 @@
 #ifndef MPCCI_DATA_HANDLER_H_
 #define MPCCI_DATA_HANDLER_H_
 
+#include <string_view>
 #include <vector>
 
 namespace MpCCI {
+
+struct MeshInfo;
 
 //! \brief Abstract data handler for a MpCCI job.
 class DataHandler {
 public:
   //! \brief Read data from MpCCI server.
-  virtual void readData(int quant_id, const std::vector<int>& nodes, const double* data) = 0;
+  virtual void readData(int quant_id, const MeshInfo& info, const double* data) = 0;
 
   //! \brief Write data to MpCCI server.
-  virtual void writeData(int quand_it, const std::vector<int>& nodes, double* data) const = 0;
+  virtual void writeData(int quand_it, const MeshInfo& info, double* data) const = 0;
+
+  //! \brief Adds the application-specific coupling definition.
+  virtual bool addCoupling(std::string_view name, const MeshInfo& info) = 0;
 };
 
 }

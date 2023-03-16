@@ -33,7 +33,7 @@ struct MeshInfo {
   std::vector<double> coords; //!< Coordinates for nodes on interface
   std::vector<int> elms; //!< Element node indices on interface
   std::vector<std::pair<int,int>> gelms; //!< Global element numbers for surface
-  std::vector<unsigned> types; //!< Type of each element
+  unsigned type; //!< Type of elements
 };
 std::ostream& operator<<(std::ostream&, const MeshInfo&);
 

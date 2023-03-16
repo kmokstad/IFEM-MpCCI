@@ -19,18 +19,20 @@
 #include "MpCCIJob.h"
 
 
+namespace MpCCI {
+
 /*!
   \brief Template class for stationary simulator drivers.
   \details This template can be instantiated over any type implementing the
   ISolver interface. It provides data output to HDF5 and VTF.
 */
 
-template<class T1> class SIMSolverMpCCIStat : public SIMSolverStat<T1>
+template<class T1> class SIMSolverStat : public ::SIMSolverStat<T1>
 {
 public:
   //! \brief The constructor initializes the reference to the actual solver.
-  explicit SIMSolverMpCCIStat(T1& s1, const char* head = nullptr) :
-    SIMSolverStat<T1>(s1, head)
+  explicit SIMSolverStat(T1& s1, const char* head = nullptr) :
+    ::SIMSolverStat<T1>(s1, head)
   {
   }
 
@@ -72,11 +74,11 @@ public:
   ISolver interface. It provides a time stepping loop and restart in addition.
 */
 
-template<class T1> class SIMSolverMpCCI : public SIMSolver<T1>
+template<class T1> class SIMSolver : public ::SIMSolver<T1>
 {
 public:
   //! \brief The constructor initializes the reference to the actual solver.
-  explicit SIMSolverMpCCI(T1& s1) : SIMSolver<T1>(s1)
+  explicit SIMSolver(T1& s1) : ::SIMSolver<T1>(s1)
   {
   }
 
@@ -111,5 +113,7 @@ public:
     return 0;
   }
 };
+
+}
 
 #endif

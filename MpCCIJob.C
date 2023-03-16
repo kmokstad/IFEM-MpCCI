@@ -149,6 +149,11 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
   MeshInfo& info = globalInstance->meshInfo;
   info = globalInstance->meshData(part->name);
 
+  if (!globalInstance->handler.addCoupling(part->name, info)) {
+    MPCCI_MSG_INFO0("Failed to establish coupling property.\n");
+    return 1;
+  }
+
    MPCCI_MSG_INFO1("Coupling grid definition for component \"%s\" ...\n",
                    MPCCI_PART_NAME(part));
    MPCCI_MSG_INFO1("We have %i nodes\n", int(info.nodes.size()));
@@ -181,8 +186,8 @@ int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
                      MPCCI_PART_MESHID(part),    /* mesh id */
                      MPCCI_PART_PARTID(part),    /* part id */
                      info.elms.size() / 4,    /* number of elements */
-                     info.types[0],               /* first element type */
-                     info.types.data(),                  /* element types */
+                     info.type,               /* first element type */
+                     nullptr,                  /* element types */
                      info.elms.data(),                  /* nodes of the element */
                      nullptr);                      /* element IDs */
 
@@ -199,7 +204,7 @@ int Job::getFaceNodeValues (const MPCCI_PART* part,
                              std::to_string(MPCCI_QUANT_SMETHOD(quant)));
 
   globalInstance->handler.writeData(MPCCI_QUANT_QID(quant),
-                                    globalInstance->meshInfo.nodes,
+                                    globalInstance->meshInfo,
                                     static_cast<double*>(values));
 
    MPCCI_MSG_INFO0("finished send values...\n");
@@ -224,7 +229,7 @@ void Job::putFaceNodeValues (const MPCCI_PART* part,
                              std::to_string(MPCCI_QUANT_SMETHOD(quant)));
 
   globalInstance->handler.readData(MPCCI_QUANT_QID(quant),
-                                   globalInstance->meshInfo.nodes,
+                                   globalInstance->meshInfo,
                                    static_cast<double*>(values));
   MPCCI_MSG_INFO0("finished receive values...\n");
 }
@@ -244,8 +249,8 @@ int Job::partUpdate(MPCCI_PART* part,
 int Job::transfer(int status)
 {
   mpcciTinfo.iter = 0;
-  mpcciTinfo.time = 0.0;
-  mpcciTinfo.dt = 0.0;
+  mpcciTinfo.time = 1.0;
+  mpcciTinfo.dt = 1.0;
   mpcciTinfo.conv_code = status;
 
   umpcci_conv_cstate(mpcciTinfo.conv_code);
@@ -254,7 +259,7 @@ int Job::transfer(int status)
     MPCCI_MSG_WARNING0("Error during data transfer: Check log file\n");
     throw std::runtime_error("Error during data transfer. Check log file");
   } else if (ret == 0) {
-    MPCCI_MSG_INFO0("No data transfer ocurred.+\n");
+    MPCCI_MSG_INFO0("No data transfer ocurred.\n");
     return MPCCI_CONV_STATE_INVALID;
   }
 
@@ -300,7 +305,7 @@ MeshInfo Job::meshData(std::string_view name) const
     result.coords.push_back(c.z);
   }
 
-  result.types.resize(result.elms.size() / 4, MPCCI_ETYP_QUAD4);
+  result.type = MPCCI_ETYP_QUAD4;
   IFEM::cout << result;
   return result;
 }

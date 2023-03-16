@@ -12,6 +12,7 @@
 //==============================================================================
 
 #include "MpCCIArgs.h"
+#include "MpCCIJob.h"
 #include "SIMMpCCIStructure.h"
 
 #include "IFEM.h"
@@ -22,6 +23,7 @@
 #include "SIMSolver.h"
 
 #include <iostream>
+#include <numeric>
 #include <stdexcept>
 
 
@@ -59,7 +61,7 @@ int main (int argc, char** argv)
 
   utl::profiler->stop("Initialization");
 
-  SIMMpCCIStructure<SIM3D> sim(args.newmark);
+  MpCCI::SIMStructure<SIM3D> sim;
 
   if (args.newmark) {
     NewmarkDriver<NewmarkSIM> solver(sim);
@@ -97,6 +99,18 @@ int main (int argc, char** argv)
     if (!sim.initSystem(sim.opt.solver))
       return 4;
     sim.initSolution(sim.getNoDOFs());
+
+    MpCCI::Job::dryRun = true;
+    MpCCI::Job job(sim, sim);
+    auto info = job.meshData("couple-flap");
+    sim.addCoupling("couple-flap", info);
+    std::vector<double> values(info.gelms.size());
+    double val = 1e6;
+    for (double& d : values) {
+      d = val; val += 1e6;
+    }
+    sim.readData(MPCCI_QID_ABSPRESSURE, info, values.data());
+
     SIMSolverStat solver(sim);
     if (!solver.read(infile))
       return 5;

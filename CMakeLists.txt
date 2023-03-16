@@ -37,6 +37,8 @@ endif()
 
 add_library(MpCCICommon MpCCIJob.C
                         MpCCIJob.h
+                        MpCCIPressureLoad.C
+                        MpCCIPressureLoad.h
                         SIMMpCCIStructure.C
                         SIMMpCCIStructure.h
                         MpCCIDataHandler.h)

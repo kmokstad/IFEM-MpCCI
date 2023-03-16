@@ -20,19 +20,23 @@
 class IntegrandBase;
 
 
+namespace MpCCI {
+
+struct MeshInfo;
+
 /*!
   \brief Driver wrapping the elasticity solver with MpCCI data transfer functions.
 */
 
-template<class Dim> class SIMMpCCIStructure : public SIMElasticityWrap<Dim>,
-                                              public MpCCI::DataHandler
+template<class Dim> class SIMStructure : public SIMElasticityWrap<Dim>,
+                                         public MpCCI::DataHandler
 {
 public:
   //! \brief Default constructor.
-  explicit SIMMpCCIStructure(bool newmark);
+  explicit SIMStructure();
 
-  //! \brief The destructor clears the VTF-file pointer.
-  virtual ~SIMMpCCIStructure();
+  //! \brief Empty destructor.
+  virtual ~SIMStructure() = default;
 
   //! \brief Computes the solution for the current time step.
   bool solveStep(TimeStep& tp) override;
@@ -41,10 +45,13 @@ public:
   Elasticity* getIntegrand() override;
 
   //! \brief Get data from MpCCI server.
-  void readData(int quant_id, const std::vector<int>& nodes, const double* data) override;
+  void readData(int quant_id, const MeshInfo& info, const double* data) override;
 
   //! \brief Write data to MpCCI server.
-  void writeData(int quant_id, const std::vector<int>& nodes, double* data) const override;
+  void writeData(int quant_id, const MeshInfo& info, double* data) const override;
+
+  //! \brief Adds the pressure load function.
+  bool addCoupling(std::string_view name, const MeshInfo& info) override;
 
   //! \brief Returns a const reference to configured loads.
   const std::map<int, Vec3>& getLoads() const { return loadMap; }
@@ -54,7 +61,9 @@ protected:
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
 
   std::map<int, Vec3> loadMap; //!< Map of boundary forces
-  std::vector<int> elemPressures; //!< Element pressure values
+  std::vector<double> elemPressures; //!< Element pressure values
 };
+
+}
 
 #endif
