@@ -90,9 +90,12 @@ void SIMStructure<Dim>::writeData (int quant_id,
     throw std::runtime_error("Asked to write an unknown quantity " +
                              std::to_string(quant_id));
 
-  for (const int idx : info.nodes)
-    for (size_t i = 0; i < Dim::dimension; ++i)
-      *valptr++ = this->getSolution()[idx*Dim::dimension+i];
+  for (const int idx : info.nodes) {
+    const Vec3 pos = this->getNodeCoord(idx+1);
+    for (size_t i = 0; i < Dim::dimension; ++i) {
+      *valptr++ = this->getSolution()[idx*Dim::dimension+i] + pos[i];
+    }
+  }
 }
 
 

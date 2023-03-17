@@ -23,7 +23,7 @@
 #include <vector>
 
 class SIMinput;
-class TimeStep;
+struct TimeDomain;
 
 namespace MpCCI {
 
@@ -46,7 +46,7 @@ public:
   static bool dryRun; //!< To perform a dry run - used in tests
 
   //! \brief The constructor initializes the MpCCI job.
-  Job(SIMinput& simulator, DataHandler& extractor);
+  Job(SIMinput& simulator, DataHandler* hndler, GlobalHandler* ghndler);
 
   //! \brief The destructor deinitializes the MpCCI job.
   ~Job();
@@ -68,16 +68,13 @@ public:
                                 const MPCCI_QUANT* quant,
                                 void* values);
 
-  //! \brief Extracts data from solution.
-  static void extractData(const MeshInfo& info,
-                          const std::vector<double>& data,
-                          double* values);
-
-  //! \brief Obtain time stepping information.
-  const TimeStep& getNextTimeStep();
+  static int getGlobalValues (const MPCCI_GLOB* glob, void* values);
+  static void putGlobalValues (const MPCCI_GLOB* glob, void* values);
 
   //! \brief Execute data transfer.
-  int transfer(int status);
+  int transfer(int status, TimeDomain& time);
+
+  void done();
 
   //! \brief Returns the linear FEM mesh for a given topology set.
   MeshInfo meshData(std::string_view name) const;
@@ -87,7 +84,8 @@ private:
   MPCCI_TINFO mpcciTinfo{0}; //!< MpCCI time step information
   MeshInfo meshInfo; //!< Coupling mesh info
   SIMinput& sim; //!< Reference to IFEM simulator
-  DataHandler& handler; //!< Data handler
+  DataHandler* handler; //!< Data handler
+  GlobalHandler* ghandler; //!< Global data handler
 };
 
 }

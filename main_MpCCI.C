@@ -76,6 +76,8 @@ int main (int argc, char** argv)
       return solver.solveProblem(infile, "Solving structure problem");
     } else {
       MpCCI::SIMSolverStat solver(sim);
+      if (sim.opt.dumpHDF5(infile))
+        solver.handleDataOutput(sim.opt.hdf5,sim.getProcessAdm());
       return solver.solveProblem(infile, "Solving structure problem");
     }
   } catch(const std::runtime_error& err) {

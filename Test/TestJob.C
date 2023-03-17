@@ -47,7 +47,7 @@ TEST(TestMpCCIJob, MeshData)
     d = val++;
   sim.setSolution(displacement);
 
-  MpCCI::Job job(sim, sim);
+  MpCCI::Job job(sim, &sim, nullptr);
 
   const auto info1 = job.meshData("Face1");
 
@@ -125,7 +125,7 @@ TEST(TestMpCCIJob, PressureLoad)
 
   sim.initSolution(sim.getNoDOFs());
 
-  MpCCI::Job job(sim, sim);
+  MpCCI::Job job(sim, &sim, nullptr);
 
   const auto info1 = job.meshData("Test");
   std::vector<double> values(info1.gelms.size());

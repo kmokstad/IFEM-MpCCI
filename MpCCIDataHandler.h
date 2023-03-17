@@ -34,6 +34,16 @@ public:
   virtual bool addCoupling(std::string_view name, const MeshInfo& info) = 0;
 };
 
+class GlobalHandler {
+public:
+  //! \brief Read global data from MpCCI server (time step size etc).
+  virtual void readGlobal(int quant_id, const double* data) = 0;
+
+  //! \brief Write global data to MpCCI server (time step size etc).
+  virtual void writeGlobal(int quant_id, double* data) const = 0;
+
+};
+
 }
 
 #endif

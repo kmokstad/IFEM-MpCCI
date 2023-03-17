@@ -65,7 +65,7 @@ int main (int argc, char** argv)
 
   if (args.newmark) {
     NewmarkDriver<NewmarkSIM> solver(sim);
-    solver.initPrm();
+
     if (!solver.read(infile))
       return 5;
 
@@ -87,6 +87,16 @@ int main (int argc, char** argv)
       exporter->registerField("u","solution",DataExporter::SIM,flag);
       exporter->setFieldValue("u",&sim,&solver.getSolution());
     }
+    MpCCI::Job::dryRun = true;
+    MpCCI::Job job(sim, &sim, nullptr);
+    auto info = job.meshData("couple-flap");
+    sim.addCoupling("couple-flap", info);
+    std::vector<double> values(info.gelms.size());
+    double val = 1e6;
+    for (double& d : values) {
+      d = val; val += 1e6;
+    }
+    sim.readData(MPCCI_QID_ABSPRESSURE, info, values.data());
 
     return solver.solveProblem(exporter.get(), nullptr);
   } else {
@@ -101,7 +111,7 @@ int main (int argc, char** argv)
     sim.initSolution(sim.getNoDOFs());
 
     MpCCI::Job::dryRun = true;
-    MpCCI::Job job(sim, sim);
+    MpCCI::Job job(sim, &sim, nullptr);
     auto info = job.meshData("couple-flap");
     sim.addCoupling("couple-flap", info);
     std::vector<double> values(info.gelms.size());
