@@ -57,7 +57,7 @@ int main (int argc, char** argv)
 
   utl::profiler->stop("Initialization");
 
-  MpCCI::SIMStructure<SIM3D> sim;
+  MpCCI::SIMStructure<SIM3D> sim(args.form);
 
   if (!sim.read(infile))
     return 2;
@@ -71,7 +71,7 @@ int main (int argc, char** argv)
   sim.initSolution(sim.getNoDOFs(),1);
 
   try {
-    if (args.newmark) {
+    if (args.dynamic) {
       MpCCI::SIMSolver solver(sim);
       return solver.solveProblem(infile, "Solving structure problem");
     } else {

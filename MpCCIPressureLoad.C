@@ -54,7 +54,8 @@ Real PressureLoad::evaluate (const Vec3& X) const
     if (it == m_info.gelms.end())
       return 0.0;
 
-    return m_values[it-m_info.gelms.begin()];
+    // Negate to get external normal oriented value
+    return -m_values[it-m_info.gelms.begin()];
 }
 
 

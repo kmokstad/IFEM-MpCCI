@@ -11,12 +11,14 @@
 //!
 //==============================================================================
 
-#include "MpCCIJob.h"
 #include "MpCCIPressureLoad.h"
+#include "MpCCIMeshData.h"
 #include "SIMMpCCIStructure.h"
 
 #include "ElasticityUtils.h"
 #include "LinearElasticity.h"
+#include "NonlinearElasticityTL.h"
+#include "NonlinearElasticityUL.h"
 
 #include "AlgEqSystem.h"
 #include "Profiler.h"
@@ -27,10 +29,16 @@
 
 #include <mpcci_quantities.h>
 
+#ifdef HAS_CEREAL
+#include <cereal/cereal.hpp>
+#include <cereal/archives/binary.hpp>
+#endif
+
 namespace MpCCI {
 
 template<class Dim>
-SIMStructure<Dim>::SIMStructure ()
+SIMStructure<Dim>::SIMStructure (MpCCIArgs::Formulation form_)
+  : form(form_)
 {
   Dim::myHeading = "MpCCI Structure solver";
 }
@@ -56,10 +64,16 @@ bool SIMStructure<Dim>::solveStep (TimeStep& tp)
 template<class Dim>
 Elasticity* SIMStructure<Dim>::getIntegrand ()
 {
-  if (!Dim::myProblem)
-    Dim::myProblem = new LinearElasticity(Dim::dimension,
-                                          Elastic::axiSymmetry,
-                                          Elastic::GIpointsVTF);
+  if (!Dim::myProblem) {
+    if (form == MpCCIArgs::Formulation::Linear)
+      Dim::myProblem = new LinearElasticity(Dim::dimension,
+                                            Elastic::axiSymmetry,
+                                            Elastic::GIpointsVTF);
+    else if (form == MpCCIArgs::Formulation::TotalLagrangian)
+      Dim::myProblem = new NonlinearElasticityTL(Dim::dimension);
+    else if (form == MpCCIArgs::Formulation::UpdatedLagrangian)
+      Dim::myProblem = new NonlinearElasticityUL(Dim::dimension);
+  }
 
   return dynamic_cast<Elasticity*>(Dim::myProblem);
 }
@@ -112,7 +126,8 @@ void SIMStructure<Dim>::readData (int quant_id,
       valptr += Dim::dimension;
       loadMap.emplace(node, frc);
     }
-  } else if (quant_id == MPCCI_QID_ABSPRESSURE) {
+  } else if (quant_id == MPCCI_QID_ABSPRESSURE ||
+             quant_id == MPCCI_QID_OVERPRESSURE) {
     elemPressures.resize(info.gelms.size());
     std::copy(valptr, valptr + info.gelms.size(), elemPressures.begin());
   } else {
@@ -138,6 +153,35 @@ bool SIMStructure<Dim>::addCoupling (std::string_view name,
 
   return true;
 }
+
+
+template<class Dim>
+void SIMStructure<Dim>::serializeMpCCIData(HDF5Restart::SerializeData& data) const
+{
+#ifdef HAS_CEREAL
+  std::ostringstream str;
+  {
+    cereal::BinaryOutputArchive ar(str);
+    ar.saveBinary(elemPressures.data(), elemPressures.size()*sizeof(double));
+  }
+  data.insert(std::make_pair("StructureSolver", str.str()));
+#endif
+}
+
+
+template<class Dim>
+void SIMStructure<Dim>::deserializeMpCCIData(const HDF5Restart::SerializeData& data)
+{
+#ifdef HAS_CEREAL
+  const auto it = data.find("StructureSolver");
+  if (it != data.end()) {
+    std::stringstream str(it->second);
+    cereal::BinaryInputArchive ar(str);
+    ar.loadBinary(elemPressures.data(), elemPressures.size()*sizeof(double));
+  }
+#endif
+}
+
 
 template class SIMStructure<SIM3D>;
 

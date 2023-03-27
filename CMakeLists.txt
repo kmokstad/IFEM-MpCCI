@@ -22,8 +22,13 @@ if(NOT EXISTS ${ELASTICITY_DIR})
   set(ELASTICITY_DIR ${PROJECT_SOURCE_DIR}/../Elasticity)
 endif()
 
+set(FINITEDEF_DIR ${ELASTICITY_DIR}/IFEM-FiniteDeformation)
+if(NOT EXISTS ${FINITEDEF_DIR})
+  set(FINITEDEF_DIR ${ELASTICITY_DIR}/FiniteDeformation)
+endif()
+
 include_directories(${IFEM_INCLUDES} ../Common ${PROJECT_SOURCE_DIR}
-                    ${ELASTICITY_DIR} ${ELASTICITY_DIR}/Linear)
+                    ${ELASTICITY_DIR} ${ELASTICITY_DIR}/Linear ${FINITEDEF_DIR})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 
@@ -35,14 +40,23 @@ if(NOT TARGET Elasticity)
   add_subdirectory(${ELASTICITY_DIR} Elasticity)
 endif()
 
+if(NOT TARGET FiniteDeformation)
+  add_subdirectory(${FINITEDEF_DIR} FiniteDeformation)
+endif()
+
 add_library(MpCCICommon MpCCIJob.C
                         MpCCIJob.h
+                        MpCCIMeshData.C
+                        MpCCIMeshData.h
+                        MpCCIMockJob.C
+                        MpCCIMockJob.h
                         MpCCIPressureLoad.C
                         MpCCIPressureLoad.h
                         SIMMpCCIStructure.C
                         SIMMpCCIStructure.h
                         MpCCIDataHandler.h)
-target_link_libraries(MpCCICommon Elasticity
+target_link_libraries(MpCCICommon FiniteDeformation
+                                  Elasticity
                                   MpCCI::MpCCI
                                   IFEMAppCommon
                                   ${IFEM_LIBRARIES})
@@ -62,12 +76,14 @@ list(APPEND CHECK_SOURCES main_MpCCI.C
 
 target_link_libraries(IFEM-MpCCI MpCCICommon
                                  Elasticity
+                                 FiniteDeformation
                                  MpCCI::MpCCI
                                  IFEMAppCommon
                                  ${IFEM_LIBRARIES})
 
 target_link_libraries(StructureSolver MpCCICommon
                                       Elasticity
+                                      FiniteDeformation
                                       MpCCI::MpCCI
                                       IFEMAppCommon
                                       ${IFEM_LIBRARIES})
@@ -78,7 +94,7 @@ install(TARGETS IFEM-MpCCI DESTINATION bin)
 IFEM_add_test_app(${PROJECT_SOURCE_DIR}/Test/*.C
                   ${PROJECT_SOURCE_DIR}/Test
                   MpCCI 0
-                  MpCCICommon Elasticity IFEMAppCommon ${IFEM_LIBRARIES})
+                  MpCCICommon Elasticity FiniteDeformation IFEMAppCommon ${IFEM_LIBRARIES})
 
 if(IFEM_COMMON_APP_BUILD)
   set(TEST_APPS ${TEST_APPS} PARENT_SCOPE)

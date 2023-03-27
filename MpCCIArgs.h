@@ -12,7 +12,7 @@
 //==============================================================================
 
 #ifndef _MPCCI_ARGS_H
-#define _MPCCIARGS_H
+#define _MPCCI_ARGS_H
 
 #include "SIMargsBase.h"
 
@@ -27,7 +27,15 @@ class TiXmlElement;
 class MpCCIArgs: public SIMargsBase
 {
 public:
-  bool newmark = false;
+  bool dynamic = false;
+
+  enum class Formulation {
+    Linear,
+    TotalLagrangian,
+    UpdatedLagrangian
+  };
+
+  Formulation form = Formulation::Linear;
 
   //! \brief Default constructor.
   MpCCIArgs() : SIMargsBase("elasticity") {}

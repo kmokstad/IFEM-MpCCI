@@ -16,7 +16,9 @@
 
 #include "NewmarkSIM.h"
 #include "SIMSolver.h"
+#include "MpCCIMockJob.h"
 #include "MpCCIJob.h"
+#include "Utilities.h"
 
 
 namespace MpCCI {
@@ -48,12 +50,12 @@ public:
     this->printHeading(heading);
 
     // Start the simulation
-    MpCCI::Job job(this->S1, &this->S1, this);
+    MpCCI::Job job(this->S1, 1.0e-4, &this->S1, this);
 
     int status = MPCCI_CONV_STATE_CONTINUE;
     tp.step = 0;
     tp.time.t = 0.0;
-    tp.time.dt = 2.5e-4;
+    tp.time.dt = 1.0e-4;
     while ((status = job.transfer(status, tp.time)) == MPCCI_CONV_STATE_CONTINUE ||
            status == MPCCI_CONV_STATE_CONVERGED) {
       this->S1.printStep(tp.step, tp.time);
@@ -101,7 +103,8 @@ private:
   ISolver interface. It provides a time stepping loop and restart in addition.
 */
 
-template<class T1> class SIMSolver : public ::SIMSolver<T1>
+template<class T1, class Job = MpCCI::Job>
+class SIMSolver : public ::SIMSolver<T1>
 {
 public:
   //! \brief The constructor initializes the reference to the actual solver.
@@ -112,6 +115,17 @@ public:
   //! \brief Parses a data section from an XML element.
   bool parse(const TiXmlElement* elem) override
   {
+    if (!strcasecmp(elem->Value(), "mpcci"))  {
+      const TiXmlElement* child = elem->FirstChildElement();
+      for (; child; child = child->NextSiblingElement())
+        if (!strcasecmp(child->Value(),"saveData"))
+          mpcciSerializer = std::make_unique<HDF5Restart>(this->S1.opt.hdf5+"_mpcci_data",
+                                                          this->S1.getProcessAdm());
+        else if (!strcasecmp(child->Value(),"couplingSet"))
+          couplingSet = utl::getValue(child, "couplingSet");
+
+      return true;
+    }
     if (!strcasecmp(elem->Value(),"newmarksolver"))  {
       const TiXmlElement* child = elem->FirstChildElement();
       for (; child; child = child->NextSiblingElement())
@@ -124,6 +138,9 @@ public:
   //! \brief Solves the problem up to the final time.
   int solveProblem(char* infile, const char* heading = nullptr) override
   {
+    // dummy call to fix file name in case we are writing MpCCI data
+    this->S1.opt.dumpHDF5(infile);
+
     if (!this->read(infile))
       return 5;
 
@@ -138,19 +155,21 @@ public:
 
     this->printHeading(heading);
 
-    MpCCI::Job job(this->S1, &this->S1, nullptr);
+    Job job(this->S1, this->tp.time.dt, &this->S1, nullptr);
+
+    if constexpr (std::is_same_v<Job, MpCCI::MockJob>)
+      job.setInputFile(this->S1.opt.hdf5 + "_mpcci_data", couplingSet, this->S1);
+
     NewmarkSIM nSim(this->S1);
     nSim.initPrm();
     nSim.initSolution(this->S1.getNoDOFs(), 3);
 
     // Solve for each time step up to final time
     int status = MPCCI_CONV_STATE_CONVERGED;
-    this->tp.step = 0;
-    this->tp.time.t = 0.0;
-    this->tp.time.dt = 2.5e-4;
     this->S1.initLHSbuffers();
     while (((status = job.transfer(status, this->tp.time)) == MPCCI_CONV_STATE_CONTINUE ||
             status == MPCCI_CONV_STATE_CONVERGED) && this->advanceStep()) {
+      nSim.advanceStep(this->tp, false);
       if (nSim.solveStep(this->tp, SIM::DYNAMIC) != SIM::CONVERGED) {
         job.transfer(MPCCI_CONV_STATE_DIVERGED, this->tp.time);
         return 3;
@@ -170,7 +189,26 @@ public:
     job.done();
     return 0;
   }
+
+  //! \brief Extends data output with serialization of MpCCI pressure loads.
+  bool saveState(int& geoBlk, int& nBlock, bool newMesh = false,
+                 char* infile = nullptr, bool saveRes = true)
+  {
+    if (mpcciSerializer) {
+      HDF5Restart::SerializeData data;
+      this->S1.serializeMpCCIData(data);
+      this->mpcciSerializer->writeData(data);
+    }
+
+    return this->::SIMSolver<T1>::saveState(geoBlk, nBlock,
+                                            newMesh, infile, saveRes);
+  }
+
+protected:
+  std::unique_ptr<HDF5Restart> mpcciSerializer; //!< Serializer for MpCCI coupling data
+  std::string couplingSet; //!< Name of set used for coupling, used when running with mocked MpCCI
 };
+
 
 }
 

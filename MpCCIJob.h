@@ -17,6 +17,7 @@
 #include <mpcci.h>
 
 #include "MpCCIDataHandler.h"
+#include "MpCCIMeshData.h"
 
 #include <iosfwd>
 #include <string_view>
@@ -27,15 +28,6 @@ struct TimeDomain;
 
 namespace MpCCI {
 
-//! \brief Struct for holding a linear FEM mesh definition.
-struct MeshInfo {
-  std::vector<int> nodes; //!< Global nodes on interface
-  std::vector<double> coords; //!< Coordinates for nodes on interface
-  std::vector<int> elms; //!< Element node indices on interface
-  std::vector<std::pair<int,int>> gelms; //!< Global element numbers for surface
-  unsigned type; //!< Type of elements
-};
-std::ostream& operator<<(std::ostream&, const MeshInfo&);
 
 //! \brief Class handling a MpCCI job.
 //! \details Only a single instance is allowed.
@@ -46,7 +38,9 @@ public:
   static bool dryRun; //!< To perform a dry run - used in tests
 
   //! \brief The constructor initializes the MpCCI job.
-  Job(SIMinput& simulator, DataHandler* hndler, GlobalHandler* ghndler);
+  Job(SIMinput& simulator, const double dt,
+      DataHandler* hndler = nullptr,
+      GlobalHandler* ghndler = nullptr);
 
   //! \brief The destructor deinitializes the MpCCI job.
   ~Job();
@@ -75,9 +69,6 @@ public:
   int transfer(int status, TimeDomain& time);
 
   void done();
-
-  //! \brief Returns the linear FEM mesh for a given topology set.
-  MeshInfo meshData(std::string_view name) const;
 
 private:
   MPCCI_JOB* mpcciJob{nullptr}; //!< MpCCI job info structure

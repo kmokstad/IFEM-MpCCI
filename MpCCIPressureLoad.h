@@ -47,7 +47,7 @@ private:
   const MeshInfo& m_info; //!< Reference to mesh info for surface grid
   const std::vector<double>& m_values; //!< Reference to vector of pressure values
   std::vector<std::vector<Real>> m_domain; //!< Parameter domain
-  size_t m_pid{};
+  size_t m_pid = 0; //!< Current patch ID
 };
 
 }

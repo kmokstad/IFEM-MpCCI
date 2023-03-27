@@ -14,6 +14,8 @@
 #ifndef MPCCI_DATA_HANDLER_H_
 #define MPCCI_DATA_HANDLER_H_
 
+#include "HDF5Restart.h"
+
 #include <string_view>
 #include <vector>
 
@@ -42,6 +44,14 @@ public:
   //! \brief Write global data to MpCCI server (time step size etc).
   virtual void writeGlobal(int quant_id, double* data) const = 0;
 
+};
+
+//! \brief Virtual interface for MpCCI data (de)serialization.
+//! \details Used for mocking a MpCCI server.
+class ISerialize : public DataHandler {
+public:
+  virtual void serializeMpCCIData(HDF5Restart::SerializeData& data) const = 0;
+  virtual void deserializeMpCCIData(const HDF5Restart::SerializeData& data) = 0;
 };
 
 }

@@ -14,7 +14,9 @@
 #ifndef _SIM_MPCCI_STRUCTURE_H_
 #define _SIM_MPCCI_STRUCTURE_H_
 
+#include "HDF5Restart.h"
 #include "MpCCIDataHandler.h"
+#include "MpCCIArgs.h"
 #include "SIMElasticityWrap.h"
 
 class IntegrandBase;
@@ -29,11 +31,11 @@ struct MeshInfo;
 */
 
 template<class Dim> class SIMStructure : public SIMElasticityWrap<Dim>,
-                                         public MpCCI::DataHandler
+                                         public MpCCI::ISerialize
 {
 public:
   //! \brief Default constructor.
-  explicit SIMStructure();
+  explicit SIMStructure(MpCCIArgs::Formulation form);
 
   //! \brief Empty destructor.
   virtual ~SIMStructure() = default;
@@ -56,12 +58,19 @@ public:
   //! \brief Returns a const reference to configured loads.
   const std::map<int, Vec3>& getLoads() const { return loadMap; }
 
+  //! \brief Serializes received pressure loads from MpCCI.
+  void serializeMpCCIData(HDF5Restart::SerializeData& data) const override;
+
+  //! \brief Deserializes received pressure loads from MpCCI.
+  void deserializeMpCCIData(const HDF5Restart::SerializeData& data) override;
+
 protected:
   //! \brief Assemble the nodal interface forces from the fluid solver.
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;
 
   std::map<int, Vec3> loadMap; //!< Map of boundary forces
   std::vector<double> elemPressures; //!< Element pressure values
+  MpCCIArgs::Formulation form;
 };
 
 }

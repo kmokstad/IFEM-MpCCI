@@ -16,6 +16,7 @@
 #include "SIMMpCCIStructure.h"
 
 #include "IFEM.h"
+#include "HHTSIM.h"
 #include "NewmarkDriver.h"
 #include "NewmarkSIM.h"
 #include "Profiler.h"
@@ -61,10 +62,10 @@ int main (int argc, char** argv)
 
   utl::profiler->stop("Initialization");
 
-  MpCCI::SIMStructure<SIM3D> sim;
+  MpCCI::SIMStructure<SIM3D> sim(args.form);
 
-  if (args.newmark) {
-    NewmarkDriver<NewmarkSIM> solver(sim);
+  if (args.dynamic) {
+    NewmarkDriver<HHTSIM> solver(sim);
 
     if (!solver.read(infile))
       return 5;
@@ -74,6 +75,10 @@ int main (int argc, char** argv)
 
     if (!sim.initSystem(sim.opt.solver))
       return 4;
+
+    if (sim.opt.format >= 0)
+      if (!solver.saveModel(infile))
+        return 5;
 
     sim.opt.print(IFEM::cout,true) << std::endl;
 
@@ -88,14 +93,12 @@ int main (int argc, char** argv)
       exporter->setFieldValue("u",&sim,&solver.getSolution());
     }
     MpCCI::Job::dryRun = true;
-    MpCCI::Job job(sim, &sim, nullptr);
-    auto info = job.meshData("couple-flap");
+    MpCCI::Job job(sim, 0.0, &sim, nullptr);
+    auto info = MpCCI::meshData("couple-flap", sim);
     sim.addCoupling("couple-flap", info);
     std::vector<double> values(info.gelms.size());
-    double val = 1e6;
-    for (double& d : values) {
-      d = val; val += 1e6;
-    }
+    double val = 1e4;
+    std::fill(values.begin(), values.end(), val);
     sim.readData(MPCCI_QID_ABSPRESSURE, info, values.data());
 
     return solver.solveProblem(exporter.get(), nullptr);
@@ -111,13 +114,14 @@ int main (int argc, char** argv)
     sim.initSolution(sim.getNoDOFs());
 
     MpCCI::Job::dryRun = true;
-    MpCCI::Job job(sim, &sim, nullptr);
-    auto info = job.meshData("couple-flap");
+    MpCCI::Job job(sim, 0.0, &sim, nullptr);
+    auto info = MpCCI::meshData("couple-flap", sim);
     sim.addCoupling("couple-flap", info);
     std::vector<double> values(info.gelms.size());
     double val = 1e6;
     for (double& d : values) {
-      d = val; val += 1e6;
+      d = val;
+      val += 1e6;
     }
     sim.readData(MPCCI_QID_ABSPRESSURE, info, values.data());
 

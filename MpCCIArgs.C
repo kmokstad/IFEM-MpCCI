@@ -19,7 +19,19 @@
 bool MpCCIArgs::parse (const TiXmlElement* elem)
 {
   if (!strcasecmp(elem->Value(),"newmarksolver"))
-    newmark = true;
+    dynamic = true;
+
+  if (!strcasecmp(elem->Value(),"elasticity")) {
+    std::string formulation;
+    if (utl::getAttribute(elem, "formulation", formulation)) {
+      if (formulation == "linear")
+        form = Formulation::Linear;
+      else if (formulation == "TL")
+        form = Formulation::TotalLagrangian;
+      else if (formulation == "UL")
+        form = Formulation::UpdatedLagrangian;
+    }
+  }
 
   return this->SIMargsBase::parse(elem);
 }
