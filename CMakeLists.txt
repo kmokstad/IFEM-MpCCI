@@ -65,6 +65,10 @@ add_executable(IFEM-MpCCI main_MpCCI.C
                           MpCCIArgs.C
                           MpCCIArgs.h
                           SIMSolverMpCCI.h)
+add_executable(IFEM-MockMpCCI main_MockMpCCI.C
+                          MpCCIArgs.C
+                          MpCCIArgs.h
+                          SIMSolverMpCCI.h)
 add_executable(StructureSolver main_StructureSolver.C
                                MpCCIArgs.C
                                MpCCIArgs.h)
@@ -80,6 +84,13 @@ target_link_libraries(IFEM-MpCCI MpCCICommon
                                  MpCCI::MpCCI
                                  IFEMAppCommon
                                  ${IFEM_LIBRARIES})
+
+target_link_libraries(IFEM-MockMpCCI MpCCICommon
+                                     Elasticity
+                                     FiniteDeformation
+                                     MpCCI::MpCCI
+                                     IFEMAppCommon
+                                     ${IFEM_LIBRARIES})
 
 target_link_libraries(StructureSolver MpCCICommon
                                       Elasticity

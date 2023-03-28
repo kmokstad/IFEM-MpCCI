@@ -103,7 +103,7 @@ private:
   ISolver interface. It provides a time stepping loop and restart in addition.
 */
 
-template<class T1, class Job = MpCCI::Job>
+template<class T1, class Newmark = NewmarkSIM, class Job = MpCCI::Job>
 class SIMSolver : public ::SIMSolver<T1>
 {
 public:
@@ -141,8 +141,20 @@ public:
     // dummy call to fix file name in case we are writing MpCCI data
     this->S1.opt.dumpHDF5(infile);
 
-    if (!this->read(infile))
-      return 5;
+    Newmark nSim(this->S1);
+    if (!nSim.read(infile) || !this->read(infile))
+      return 2;
+
+    if (!this->S1.preprocess())
+      return 3;
+
+    if (!this->S1.initSystem(this->S1.opt.solver,1))
+      return 4;
+
+    nSim.initSol();
+    nSim.initPrm();
+    this->S1.initSolution(this->S1.getNoDOFs(), 1);
+    nSim.printProblem();
 
     if (this->S1.opt.dumpHDF5(infile))
       this->handleDataOutput(this->S1.opt.hdf5,this->S1.getProcessAdm());
@@ -153,20 +165,17 @@ public:
     if (!this->saveState(geoBlk,nBlock,true,infile,this->tp.multiSteps()))
       return 2;
 
-    this->printHeading(heading);
-
     Job job(this->S1, this->tp.time.dt, &this->S1, nullptr);
 
     if constexpr (std::is_same_v<Job, MpCCI::MockJob>)
       job.setInputFile(this->S1.opt.hdf5 + "_mpcci_data", couplingSet, this->S1);
 
-    NewmarkSIM nSim(this->S1);
-    nSim.initPrm();
-    nSim.initSolution(this->S1.getNoDOFs(), 3);
+    this->printHeading(heading);
 
     // Solve for each time step up to final time
     int status = MPCCI_CONV_STATE_CONVERGED;
     this->S1.initLHSbuffers();
+
     while (((status = job.transfer(status, this->tp.time)) == MPCCI_CONV_STATE_CONTINUE ||
             status == MPCCI_CONV_STATE_CONVERGED) && this->advanceStep()) {
       nSim.advanceStep(this->tp, false);

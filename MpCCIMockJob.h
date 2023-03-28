@@ -15,6 +15,7 @@
 #define MPCCI_MOCKJOB_H_
 
 #include "MpCCIDataHandler.h"
+#include "MpCCIMeshData.h"
 
 #include <memory>
 
@@ -42,9 +43,13 @@ public:
   //! \brief Execute data transfer.
   int transfer(int status, TimeDomain& time);
 
+  //! \brief We are done.
+  void done() {}
+
 private:
   ISerialize& sim; //!< Reference to IFEM simulator
-  int m_level = 0; //!< Current level to read
+  int m_level = 1; //!< Current level to read
+  MeshInfo m_info; //!< Mesh information
   std::unique_ptr<HDF5Restart> m_reader; //!< Serialized data reader
 };
 

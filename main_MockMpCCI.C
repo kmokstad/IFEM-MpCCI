@@ -1,7 +1,7 @@
 // $Id$
 //==============================================================================
 //!
-//! \file main_MpCCI.C
+//! \file main_MockMpCCI.C
 //!
 //! \date Feb 23 2023
 //!
@@ -25,7 +25,7 @@
 
 
 /*!
-  \brief Main program for the IFEM MpCCI adapter.
+  \brief Main program for the IFEM mocked MpCCI adapter.
 
   The input to the program is specified through the following
   command-line arguments. The arguments may be given in arbitrary order.
@@ -58,15 +58,16 @@ int main (int argc, char** argv)
 
   utl::profiler->stop("Initialization");
 
-  MpCCI::SIMStructure<SIM3D> sim(args.form);
+  using Model = MpCCI::SIMStructure<SIM3D>;
+  Model sim(args.form);
 
   try {
     if (args.dynamic) {
       if (args.form == MpCCIArgs::Formulation::Linear) {
-        MpCCI::SIMSolver solver(sim);
+        MpCCI::SIMSolver<Model,NewmarkSIM,MpCCI::MockJob> solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
       } else {
-        MpCCI::SIMSolver<MpCCI::SIMStructure<SIM3D>,HHTSIM> solver(sim);
+        MpCCI::SIMSolver<Model,HHTSIM,MpCCI::MockJob> solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
       }
     } else {

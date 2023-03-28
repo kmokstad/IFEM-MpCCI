@@ -151,6 +151,7 @@ bool SIMStructure<Dim>::addCoupling (std::string_view name,
       this->generateThreadGroups(prop);
   }
 
+  elemPressures.resize(info.gelms.size());
   return true;
 }
 
