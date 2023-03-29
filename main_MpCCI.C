@@ -17,6 +17,7 @@
 
 #include "IFEM.h"
 #include "HHTSIM.h"
+#include "NewmarkNLSIM.h"
 #include "Profiler.h"
 #include "SIM3D.h"
 
@@ -66,7 +67,7 @@ int main (int argc, char** argv)
         MpCCI::SIMSolver solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
       } else {
-        MpCCI::SIMSolver<MpCCI::SIMStructure<SIM3D>,HHTSIM> solver(sim);
+        MpCCI::SIMSolver<MpCCI::SIMStructure<SIM3D>,NewmarkNLSIM> solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
       }
     } else {

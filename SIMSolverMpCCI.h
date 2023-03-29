@@ -1,13 +1,13 @@
 // $Id$
 //==============================================================================
 //!
-//! \file SIMSolver.h
+//! \file SIMSolverMpCCI.h
 //!
-//! \date Oct 12 2012
+//! \date Mar 28 2023
 //!
 //! \author Arne Morten Kvarving / SINTEF
 //!
-//! \brief SIM solver class template.
+//! \brief MpCCI solver class template.
 //!
 //==============================================================================
 
@@ -119,7 +119,7 @@ public:
       const TiXmlElement* child = elem->FirstChildElement();
       for (; child; child = child->NextSiblingElement())
         if (!strcasecmp(child->Value(),"saveData"))
-          mpcciSerializer = std::make_unique<HDF5Restart>(this->S1.opt.hdf5+"_mpcci_data",
+          mpcciSerializer = std::make_unique<HDF5Restart>(couplingFile,
                                                           this->S1.getProcessAdm());
         else if (!strcasecmp(child->Value(),"couplingSet"))
           couplingSet = utl::getValue(child, "couplingSet");
@@ -138,8 +138,9 @@ public:
   //! \brief Solves the problem up to the final time.
   int solveProblem(char* infile, const char* heading = nullptr) override
   {
-    // dummy call to fix file name in case we are writing MpCCI data
-    this->S1.opt.dumpHDF5(infile);
+    couplingFile = infile;
+    couplingFile.erase(couplingFile.find_last_of("."));
+    couplingFile += "_mpcci_data";
 
     Newmark nSim(this->S1);
     if (!nSim.read(infile) || !this->read(infile))
@@ -151,7 +152,7 @@ public:
     if (!this->S1.initSystem(this->S1.opt.solver,1))
       return 4;
 
-    nSim.initSol();
+    nSim.initSol(3);
     nSim.initPrm();
     this->S1.initSolution(this->S1.getNoDOFs(), 1);
     nSim.printProblem();
@@ -167,8 +168,10 @@ public:
 
     Job job(this->S1, this->tp.time.dt, &this->S1, nullptr);
 
-    if constexpr (std::is_same_v<Job, MpCCI::MockJob>)
+    if constexpr (std::is_same_v<Job, MpCCI::MockJob>) {
       job.setInputFile(this->S1.opt.hdf5 + "_mpcci_data", couplingSet, this->S1);
+      mpcciSerializer.reset();
+    }
 
     this->printHeading(heading);
 
@@ -216,6 +219,7 @@ public:
 protected:
   std::unique_ptr<HDF5Restart> mpcciSerializer; //!< Serializer for MpCCI coupling data
   std::string couplingSet; //!< Name of set used for coupling, used when running with mocked MpCCI
+  std::string couplingFile; //!< Name of file used for coupling data
 };
 
 
