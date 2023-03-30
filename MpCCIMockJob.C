@@ -32,8 +32,8 @@ void MockJob::setInputFile(std::string_view name,
 {
   m_info = MpCCI::meshData(couplingSet, isim);
   sim.addCoupling(couplingSet, m_info);
-  m_reader = std::make_unique<HDF5Restart>(std::string(name),
-                                           isim.getProcessAdm());
+  static ProcessAdm adm;
+  m_reader = std::make_unique<HDF5Restart>(std::string(name), adm);
 }
 
 

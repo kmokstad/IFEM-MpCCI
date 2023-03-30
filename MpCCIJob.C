@@ -51,6 +51,176 @@ Job::Job (SIMinput& simulator, const double dt,
   if (dryRun)
     return;
 
+  if (sim.getProcessAdm().getProcId() == 0)
+    this->establishConnection(dt);
+  else {
+    if (!this->setupMeshData(""))
+      throw std::runtime_error("Failed to establish coupling property.\n");
+  }
+}
+
+
+Job::~Job ()
+{
+  if (mpcciJob)
+    mpcci_quit(&mpcciJob);
+}
+
+
+int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
+{
+  if (!globalInstance->setupMeshData(part->name)) {
+    MPCCI_MSG_INFO0("Failed to establish coupling property.\n");
+    return 1;
+  }
+
+  const MeshInfo& info = globalInstance->meshInfo;
+
+  MPCCI_MSG_INFO1("Coupling grid definition for component \"%s\" ...\n",
+                  MPCCI_PART_NAME(part));
+  MPCCI_MSG_INFO1("We have %i nodes\n", int(info.nodes.size()));
+  MPCCI_MSG_INFO1("We have %i elms\n", int(info.elms.size() / info.node_per_elm));
+
+  MPCCI_PART_NNODES(part) = info.nodes.size();
+  MPCCI_PART_NELEMS(part) = info.elms.size() / info.node_per_elm;
+
+  int ret = smpcci_defp(server,
+                        MPCCI_PART_MESHID(part),
+                        MPCCI_PART_PARTID(part),
+                        MPCCI_CSYS_C3D,
+                        info.nodes.size(),
+                        info.elms.size() / info.node_per_elm,
+                        MPCCI_PART_NAME  (part));
+
+  // Send the nodes definition for this coupled component
+  ret = smpcci_pnod(server,
+                    MPCCI_PART_MESHID(part),  /* mesh id */
+                    MPCCI_PART_PARTID(part),  /* part id */
+                    MPCCI_CSYS_C3D,
+                    info.nodes.size(),  /* no. of nodes */
+                    info.coords.data(),               /* node coordinates */
+                    static_cast<unsigned>(sizeof(double)),  /* data type of coordinates */
+                    info.nodes.data(),              /* node ids */
+                    nullptr);
+
+  // Send the element definiton for this coupled component
+  ret = smpcci_pels(server,
+                    MPCCI_PART_MESHID(part),    /* mesh id */
+                    MPCCI_PART_PARTID(part),    /* part id */
+                    info.elms.size() / info.node_per_elm,  /* number of elements */
+                    info.type,               /* first element type */
+                    nullptr,                  /* element types */
+                    info.elms.data(),                  /* nodes of the element */
+                    nullptr);                      /* element IDs */
+
+  return ret;
+}
+
+
+int Job::getFaceNodeValues (const MPCCI_PART* part,
+                            const MPCCI_QUANT* quant,
+                            void* values)
+{
+  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
+    throw std::runtime_error("Invalid quantity method requested in getFaceNodeValues " +
+                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
+
+  if (globalInstance->handler)
+    globalInstance->handler->writeData(MPCCI_QUANT_QID(quant),
+                                       globalInstance->meshInfo,
+                                       static_cast<double*>(values));
+
+   MPCCI_MSG_INFO0("finished send values...\n");
+
+   return sizeof(double); /* return the size of the value data type */
+}
+
+
+void Job::putFaceNodeValues (const MPCCI_PART* part,
+                             const MPCCI_QUANT* quant,
+                             void* values)
+/*****************************************************************************/
+{
+  MPCCI_MSG_INFO0("entered receive values...\n");
+
+  /* check whether this is the appropriate method */
+
+  MPCCI_MSG_ASSERT(MPCCI_PART_IS_FACE(part));
+
+  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
+    throw std::runtime_error("Invalid quantity method requested in putFaceNodeValues " +
+                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
+
+  if (globalInstance->handler)
+    globalInstance->handler->readData(MPCCI_QUANT_QID(quant),
+                                      globalInstance->meshInfo,
+                                      static_cast<double*>(values));
+
+  MPCCI_MSG_INFO0("finished receive values...\n");
+}
+
+
+int Job::partUpdate(MPCCI_PART* part,
+                    MPCCI_QUANT* quant)
+{
+  MPCCI_PART_NNODES(part) = globalInstance->meshInfo.nodes.size();
+  MPCCI_PART_NELEMS(part) = globalInstance->meshInfo.elms.size() / 4;
+  quant->flags &= ~MPCCI_QFLAG_LOC_MASK;
+  quant->flags |= (MPCCI_QUANT_IS_COORD(quant) ? MPCCI_QFLAG_LOC_VERT : MPCCI_QFLAG_LOC_CELL);
+  return 0;
+}
+
+
+int Job::transfer(int status, TimeDomain& time)
+{
+  if (sim.getProcessAdm().getProcId() == 0) {
+    mpcciTinfo.time = time.t;
+    mpcciTinfo.dt = time.dt;
+    mpcciTinfo.iter = -1;
+    mpcciTinfo.conv_code = status;
+
+    umpcci_conv_cstate(mpcciTinfo.conv_code);
+    int ret = ampcci_transfer(mpcciJob, &mpcciTinfo);
+    if (ret == -1) {
+      MPCCI_MSG_WARNING0("Error during data transfer: Check log file\n");
+      throw std::runtime_error("Error during data transfer. Check log file");
+    } else if (ret == 0) {
+      MPCCI_MSG_INFO0("No data transfer ocurred.\n");
+      return MPCCI_CONV_STATE_INVALID;
+    }
+  }
+
+  handler->broadcast(mpcciTinfo.conv_job);
+
+  return mpcciTinfo.conv_job;
+}
+
+
+void Job::done()
+{
+  umpcci_conv_cstate(MPCCI_CONV_STATE_STOP);
+}
+
+
+int Job::getGlobalValues (const MPCCI_GLOB* glob, void* values)
+{
+  double* valptr = static_cast<double*>(values);
+  if (globalInstance->ghandler)
+    globalInstance->ghandler->writeGlobal(MPCCI_QUANT_QID(glob), valptr);
+  return sizeof(double);
+}
+
+
+void Job::putGlobalValues (const MPCCI_GLOB* glob, void* values)
+{
+  double* valptr = static_cast<double*>(values);
+  if (globalInstance->ghandler)
+    globalInstance->ghandler->readGlobal(MPCCI_QUANT_QID(glob), valptr);
+}
+
+
+void Job::establishConnection(const double dt)
+{
   static MPCCI_DRIVER driver =
   {
     (unsigned)sizeof(MPCCI_DRIVER),     /* this_size: sizeof(this) */
@@ -98,6 +268,7 @@ Job::Job (SIMinput& simulator, const double dt,
     putGlobalValues                     // putGlobalValues()
   };
 
+
   MPCCI_CINFO cinfo;
 
   umpcci_msg_functs(mpcci_printer, mpcci_printer, mpcci_printer,
@@ -117,7 +288,7 @@ Job::Job (SIMinput& simulator, const double dt,
   cinfo.codename = "ifem";
   cinfo.flags    = MPCCI_CFLAG_TYPE_FEA|MPCCI_CFLAG_GRID_CURR;
   cinfo.nclients = 1;
-  cinfo.nprocs   = 1;
+  cinfo.nprocs   = sim.getProcessAdm().getNoProcs();
   cinfo.time = 0;
 
   mpcciJob       = mpcci_init(nullptr, &cinfo);
@@ -138,159 +309,17 @@ Job::Job (SIMinput& simulator, const double dt,
 }
 
 
-Job::~Job ()
+bool Job::setupMeshData(std::string name)
 {
-  if (mpcciJob)
-    mpcci_quit(&mpcciJob);
+#if HAVE_MPI
+  int size = name.size();
+  MPI_Bcast(&size, 1, MPI_INT, 0, *sim.getProcessAdm().getCommunicator());
+  name.resize(size);
+  MPI_Bcast(name.data(), size, MPI_CHAR, 0, *sim.getProcessAdm().getCommunicator());
+#endif
+  globalInstance->meshInfo = meshData(name, globalInstance->sim);
+  return globalInstance->handler->addCoupling(name, globalInstance->meshInfo);
 }
 
-
-int Job::definePart (MPCCI_SERVER* server, MPCCI_PART* part)
-{
-  MeshInfo& info = globalInstance->meshInfo;
-  info = meshData(part->name, globalInstance->sim);
-
-  if (!globalInstance->handler->addCoupling(part->name, info)) {
-    MPCCI_MSG_INFO0("Failed to establish coupling property.\n");
-    return 1;
-  }
-
-   MPCCI_MSG_INFO1("Coupling grid definition for component \"%s\" ...\n",
-                   MPCCI_PART_NAME(part));
-   MPCCI_MSG_INFO1("We have %i nodes\n", int(info.nodes.size()));
-   MPCCI_MSG_INFO1("We have %i elms\n", int(info.elms.size() / info.node_per_elm));
-
-   MPCCI_PART_NNODES(part) = info.nodes.size();
-   MPCCI_PART_NELEMS(part) = info.elms.size() / info.node_per_elm;
-
-   int ret = smpcci_defp(server,
-                         MPCCI_PART_MESHID(part),
-                         MPCCI_PART_PARTID(part),
-                         MPCCI_CSYS_C3D,
-                         info.nodes.size(),
-                         info.elms.size() / info.node_per_elm,
-                         MPCCI_PART_NAME  (part));
-
-   // Send the nodes definition for this coupled component
-   ret = smpcci_pnod(server,
-                     MPCCI_PART_MESHID(part),  /* mesh id */
-                     MPCCI_PART_PARTID(part),  /* part id */
-                     MPCCI_CSYS_C3D,
-                     info.nodes.size(),  /* no. of nodes */
-                     info.coords.data(),               /* node coordinates */
-                     static_cast<unsigned>(sizeof(double)),  /* data type of coordinates */
-                     info.nodes.data(),              /* node ids */
-                     nullptr);
-
-   // Send the element definiton for this coupled component
-   ret = smpcci_pels(server,
-                     MPCCI_PART_MESHID(part),    /* mesh id */
-                     MPCCI_PART_PARTID(part),    /* part id */
-                     info.elms.size() / info.node_per_elm,  /* number of elements */
-                     info.type,               /* first element type */
-                     nullptr,                  /* element types */
-                     info.elms.data(),                  /* nodes of the element */
-                     nullptr);                      /* element IDs */
-
-  return ret;
-}
-
-
-int Job::getFaceNodeValues (const MPCCI_PART* part,
-                            const MPCCI_QUANT* quant,
-                            void* values)
-{
-  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
-    throw std::runtime_error("Invalid quantity method requested in getFaceNodeValues " +
-                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
-
-  if (globalInstance->handler)
-    globalInstance->handler->writeData(MPCCI_QUANT_QID(quant),
-                                       globalInstance->meshInfo,
-                                       static_cast<double*>(values));
-
-   MPCCI_MSG_INFO0("finished send values...\n");
-
-   return sizeof(double); /* return the size of the value data type */
-}
-
-
-void Job::putFaceNodeValues (const MPCCI_PART* part,
-                             const MPCCI_QUANT* quant,
-                             void* values)
-/*****************************************************************************/
-{
-   MPCCI_MSG_INFO0("entered receive values...\n");
-
-   /* check whether this is the appropriate method */
-
-   MPCCI_MSG_ASSERT(MPCCI_PART_IS_FACE(part));
-
-  if (MPCCI_QUANT_SMETHOD(quant) != MPCCI_QSM_DIRECT)
-    throw std::runtime_error("Invalid quantity method requested in putFaceNodeValues " +
-                             std::to_string(MPCCI_QUANT_SMETHOD(quant)));
-
-  if (globalInstance->handler)
-    globalInstance->handler->readData(MPCCI_QUANT_QID(quant),
-                                     globalInstance->meshInfo,
-                                     static_cast<double*>(values));
-
-  MPCCI_MSG_INFO0("finished receive values...\n");
-}
-
-
-int Job::partUpdate(MPCCI_PART* part,
-                    MPCCI_QUANT* quant)
-{
-  MPCCI_PART_NNODES(part) = globalInstance->meshInfo.nodes.size();
-  MPCCI_PART_NELEMS(part) = globalInstance->meshInfo.elms.size() / 4;
-  quant->flags &= ~MPCCI_QFLAG_LOC_MASK;
-  quant->flags |= (MPCCI_QUANT_IS_COORD(quant) ? MPCCI_QFLAG_LOC_VERT : MPCCI_QFLAG_LOC_CELL);
-  return 0;
-}
-
-
-int Job::transfer(int status, TimeDomain& time)
-{
-  mpcciTinfo.time = time.t;
-  mpcciTinfo.dt = time.dt;
-  mpcciTinfo.iter = -1;
-  mpcciTinfo.conv_code = status;
-
-  umpcci_conv_cstate(mpcciTinfo.conv_code);
-  int ret = ampcci_transfer(mpcciJob, &mpcciTinfo);
-  if (ret == -1) {
-    MPCCI_MSG_WARNING0("Error during data transfer: Check log file\n");
-    throw std::runtime_error("Error during data transfer. Check log file");
-  } else if (ret == 0) {
-    MPCCI_MSG_INFO0("No data transfer ocurred.\n");
-    return MPCCI_CONV_STATE_INVALID;
-  }
-
-  return mpcciTinfo.conv_job;
-}
-
-
-void Job::done()
-{
-  umpcci_conv_cstate(MPCCI_CONV_STATE_STOP);
-}
-
-
-int Job::getGlobalValues (const MPCCI_GLOB* glob, void* values)
-{
-  double* valptr = static_cast<double*>(values);
-  if (globalInstance->ghandler)
-    globalInstance->ghandler->writeGlobal(MPCCI_QUANT_QID(glob), valptr);
-  return sizeof(double);
-}
-
-
-void Job::putGlobalValues (const MPCCI_GLOB* glob, void* values)
-{
-  double* valptr = static_cast<double*>(values);
-  if (globalInstance->ghandler)
-    globalInstance->ghandler->readGlobal(MPCCI_QUANT_QID(glob), valptr);
-}
 
 }

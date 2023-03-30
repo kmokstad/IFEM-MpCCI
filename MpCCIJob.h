@@ -71,6 +71,12 @@ public:
   void done();
 
 private:
+  //! \brief Establish connect to MpCCI.
+  void establishConnection(const double dt);
+
+  //! \brief Setup mesh data
+  bool setupMeshData(std::string name);
+
   MPCCI_JOB* mpcciJob{nullptr}; //!< MpCCI job info structure
   MPCCI_TINFO mpcciTinfo{0}; //!< MpCCI time step information
   MeshInfo meshInfo; //!< Coupling mesh info

@@ -64,6 +64,9 @@ public:
   //! \brief Deserializes received pressure loads from MpCCI.
   void deserializeMpCCIData(const HDF5Restart::SerializeData& data) override;
 
+  //! \brief Broadcast data to non-root processes.
+  void broadcast(int& status) override;
+
 protected:
   //! \brief Assemble the nodal interface forces from the fluid solver.
   bool assembleDiscreteTerms(const IntegrandBase*, const TimeDomain&) override;

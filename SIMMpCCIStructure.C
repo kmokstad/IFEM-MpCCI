@@ -11,6 +11,7 @@
 //!
 //==============================================================================
 
+#include "ASMbase.h"
 #include "MpCCIPressureLoad.h"
 #include "MpCCIMeshData.h"
 #include "SIMMpCCIStructure.h"
@@ -21,6 +22,7 @@
 #include "NonlinearElasticityUL.h"
 
 #include "AlgEqSystem.h"
+#include "IFEM.h"
 #include "Profiler.h"
 #include "SAM.h"
 #include "SIM3D.h"
@@ -151,8 +153,27 @@ bool SIMStructure<Dim>::addCoupling (std::string_view name,
       this->generateThreadGroups(prop);
   }
 
+  // and filter for partitioning
+  if (!this->getProcessAdm().dd.getElms().empty()) {
+    for (auto* pch : this->getFEModel())
+      pch->generateThreadGroupsFromElms(this->getProcessAdm().dd.getElms());
+  }
+
   elemPressures.resize(info.gelms.size());
   return true;
+}
+
+
+template<class Dim>
+void SIMStructure<Dim>::broadcast(int& status)
+{
+#if HAVE_MPI
+  if (this->getProcessAdm().getNoProcs() > 1) {
+    MPI_Bcast(&status, 1, MPI_INT, 0, *this->getProcessAdm().getCommunicator());
+    MPI_Bcast(elemPressures.data(), elemPressures.size(),
+              MPI_DOUBLE, 0, *this->getProcessAdm().getCommunicator());
+  }
+#endif
 }
 
 

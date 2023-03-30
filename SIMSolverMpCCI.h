@@ -169,7 +169,7 @@ public:
     Job job(this->S1, this->tp.time.dt, &this->S1, nullptr);
 
     if constexpr (std::is_same_v<Job, MpCCI::MockJob>) {
-      job.setInputFile(this->S1.opt.hdf5 + "_mpcci_data", couplingSet, this->S1);
+      job.setInputFile(couplingFile, couplingSet, this->S1);
       mpcciSerializer.reset();
     }
 

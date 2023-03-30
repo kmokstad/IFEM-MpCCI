@@ -34,6 +34,9 @@ public:
 
   //! \brief Adds the application-specific coupling definition.
   virtual bool addCoupling(std::string_view name, const MeshInfo& info) = 0;
+
+  //! \brief Broadcast data to non-client ranks.
+  virtual void broadcast(int& status) = 0;
 };
 
 class GlobalHandler {
