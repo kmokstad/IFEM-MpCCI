@@ -1,0 +1,378 @@
+<?xml version="1.0"?>
+<!--
+************************************************************************************
+      Purpose:
+         Describe the capabilities of the code "IFEM" for the MpCCI GUI
+
+         $Id$
+
+************************************************************************************ -->
+<CODE>
+
+   <CodeInfo>
+      <Units   type="string"  default="SI" />
+      <Type    type="string"  default="SolidStructure SolidThermal" />
+      <Feature type="string"  default="Negotiation" />
+<!--      <Feature type="string"  default="iterativeCoupling Negotiation mpcciConfigurator" /> -->
+   </CodeInfo>
+
+   <CodesMenuEntries>
+      <Release type="menu"
+               text="Releases"
+               tooltip="Display all installed releases located by MpCCI."
+               command="mpcci ifem releases %(ModelsMenuEntries.Solver)" />
+      <Info    type="menu"
+               text="Information"
+               tooltip="Display detailed information for each installed release."
+               command="mpcci ifem info %(ModelsMenuEntries.Solver)" />
+   </CodesMenuEntries>
+
+   <ModelsMenuEntries>
+      <Solver  type="enum" default="IFEM-MpCCI" description="Please select the IFEM solver">
+            <enum value="IFEM-MpCCI" />
+            <enum value="LinEl" />
+            <enum value="ShellEl" /> 
+      </Solver>
+      <ModelFile type="filename" required="true" default="" description="Select Ifem input file" >
+         <filename suffix=".xinp" />
+         <filename suffix=".xinp.gz" />
+      </ModelFile>
+      
+      <Release  type="enum" default="latest" command="mpcci ifem releases %(ModelsMenuEntries.Solver)" sort="false"
+                hostref="%(ModelsMenuEntries.ModelFile)"
+                description="Please select the Ifem release" />
+
+      <SolutionType type="string" default="not specified" description="Solution type" visible="false" />
+      <SolutionTypeRef type="string" default="%(ModelsMenuEntries.SolutionType)" description="Solution type" 
+                        dependsOn="%(ModelsMenuEntries.SolutionType)" dependingValue="not specified" dependingCondition="false" />
+
+      <Units type="enum" default="SI" description="Select unit system" >
+<!--         <enum value="British" />
+         <enum value="cgs" />  -->
+         <enum value="SI" />
+<!--         <enum value="mm-t-s" />
+         <enum value="US-ft-lbf-s" />
+         <enum value="US-in-lbf-s" />
+         <enum value="variable" />  -->
+      </Units>
+
+<!--      <GridLengthUnit type="enum" default="m" description="Select grid length unit" sort="false"
+                      dependsOn="%(ModelsMenuEntries.Units)" dependingValue="variable" >
+         <enum  value="m" />
+         <enum  value="cm" />
+         <enum  value="mm" />
+         <enum  value="in" />
+         <enum  value="ft" />
+      </GridLengthUnit> -->
+      
+   </ModelsMenuEntries>
+
+
+   <ComponentTypeDimensions>
+      <Global type="string" default="global" />
+      <Point  type="string" default="point" />
+      <Line   type="string" default="edge" />
+      <Face   type="string" default="face surface" />
+<!--      <Volume type="string" default="elset" /> -->
+   </ComponentTypeDimensions>
+
+
+   <SupportedQuantities>
+
+      <StorageOptions>
+         <Direct        type="int" default="0" />
+         <Buffer        type="int" default="1" />
+         <FieldVariable type="int" default="3" min="1" max="20"/>
+      </StorageOptions>
+
+      <Quantities>
+         <!-- Global -->
+         <DeltaTime      type="quantity" loc="global" so="Direct" ro="Direct" />
+
+         <!-- Face -->
+         <AbsPressure    type="quantity" loc="code"      so=""       ro="Direct"    valid="Face Line" />
+         <OverPressure   type="quantity" loc="code"      so=""       ro="Direct"    valid="Face Line" />
+<!--     <WallTemp       type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Face" /> -->
+         <WallForce      type="quantity" loc="code"      so="Direct" ro="Direct"    valid="Face Line" />
+         <RelWallForce   type="quantity" loc="code"      so=""       ro="Direct"    valid="Face Line" />
+<!--     <FilmTemp       type="quantity" loc="code"      so=""       ro="Buffer Direct"    valid="Face" />
+         <WallHeatFlux   type="quantity" loc="code"      so=""       ro="Buffer"    valid="Face" />
+         <WallHTCoeff    type="quantity" loc="code"      so=""       ro="Buffer"    valid="Face" />
+         <HeatRate       type="quantity" loc="code"      so=""       ro="Buffer"    valid="Face" /> -->
+
+         <!-- Point -->
+         <Force                type="quantity" loc="code"   so="Direct" ro="Direct" valid="Point Face" />
+         <Torque               type="quantity" loc="code"   so="Direct" ro="Direct" valid="Point" />
+         <PointPosition        type="quantity" loc="code"   so="Direct" ro="Direct" valid="Point" />
+         <!--<Velocity             type="quantity" loc="code"   so="Direct" ro="Buffer" valid="Point" /> 
+         <Acceleration         type="quantity" loc="code"   so="Direct" ro="Buffer" valid="Point" />
+         <AngularCoordinate    type="quantity" loc="code"   so="Direct" ro="Buffer" valid="Point" />
+         <AngularVelocity      type="quantity" loc="code"   so="Direct" ro="Buffer" valid="Point" />
+         <AngularAcceleration  type="quantity" loc="code"   so="Direct" ro="Buffer" valid="Point" /> -->
+
+         <!-- Face & Volume -->
+         <NPosition      type="quantity" loc="code"      so="Direct" ro=""          valid="Face Line" />
+<!--     <Velocity       type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Point Face Volume" />
+         <PorePressure   type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Face Volume" />
+         <PorousFlow     type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Face Volume" />-->
+
+         <!-- Volume -->
+<!--     <Temperature    type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Volume" />
+         <BodyForce      type="quantity" loc="code"      so="Direct" ro="Buffer"    valid="Volume" />-->
+
+      </Quantities>
+   </SupportedQuantities>
+
+   <CouplingMenuEntries>
+         <!-- Analysis type depends on solution type and will be set by GUI -->
+      <Analysis type="panel" description="Analysis">
+         <AnalysisType type="enum" default="Transient" description="Analysis type" infoID="Info.analysisType.code" >
+            <enum value="Transient" />
+            <enum value="Steady state" />
+         </AnalysisType>
+      </Analysis>
+                        
+      <!-- Helper field to join MpCCI server's coupling scheme and own AnalysisType -->
+      <ServerSchemeAnalysisType type="string" default="%(mpcciserver:CouplingMenuEntries.Analysis.CouplingScheme).%(CouplingMenuEntries.Analysis.AnalysisType)" visible="false" />
+      <!-- Helper field to join server step size and analysis type -->
+      <ServerStepSizeAnalysisType type="string" default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSize).%(CouplingMenuEntries.Analysis.AnalysisType)" visible="false" />
+
+      <!-- Solver settings; Ifem inner iterations: subcycling -->  
+      <Solver type="panel" description="Solver settings" >
+         <!-- Steady state -->
+         <StepSize type="enum" default="Defined by model" description="Solver step size"
+                   dependsOn="%(CouplingMenuEntries.ServerSchemeAnalysisType)" dependingValue="Explicit.Steady state" />
+          <!-- Transient explicit -->
+         <StepSize type="enum" default="Defined by model" description="Solver step size" sort="false"
+                  dependsOn="%(CouplingMenuEntries.ServerSchemeAnalysisType)" dependingValue="Explicit.Transient" />
+         <!-- Transient implicit -->
+         <StepSize type="string"                                         description="Solver step size"
+                    default="Defined in basic: %(mpcciserver:CouplingMenuEntries.Solver.StepSizeType): %(mpcciserver:CouplingMenuEntries.Solver.StepSize)"
+                    dependsOn="%(CouplingMenuEntries.ServerSchemeAnalysisType)" dependingValue="Implicit.Transient" />
+         <!-- Subcycling not if Tranisent implicit -->
+         <SubCycle type="panel" default="true" description="Use subcycling"
+                  dependsOn="%(CouplingMenuEntries.ServerSchemeAnalysisType)" dependingValue="Implicit.Transient" dependingCondition="false" >
+            <TimeMarks  type="bool" default="true" description="Enforce exact target times"/>
+         </SubCycle> 
+      </Solver>
+
+      <CouplingSteps type="panel" description="Coupling steps" infoID="Info.cplSteps.code"
+                     info="&lt;b&gt;Defined by model&lt;&#47;b&gt;\nThe coupling step size is defined by the model file." >
+         <!-- Not code specific: take step size from common basics just strings are inserted no enum in the code specific part -->
+         <StepSizeType type="string" default="Defined in basic: %(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSize)" description="Coupling step size"
+                     dependsOn="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSize)" dependingValue="Code specific" dependingCondition="false" />
+         <StepSize type="string" default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSize)" description="Internal value for reference" visible="false"
+                     dependsOn="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSize)" dependingValue="Code specific" dependingCondition="false" />
+         <!-- Code specific transient -->
+         <StepSizeType type="enum" default="Constant" description="Type of coupling step size" sort="false"
+                  dependsOn="%(CouplingMenuEntries.ServerStepSizeAnalysisType)" dependingValue="Code specific.Transient" >
+                     <enum value="Constant"/>
+<!--                     <enum value="Variable"/> -->
+                     <enum value="Defined by model"/>
+         </StepSizeType>
+         <!-- Code specific steady state -->
+         <StepSizeType type="enum" default="Constant" description="Type of coupling step size" sort="false" visible="false"
+                  dependsOn="%(CouplingMenuEntries.ServerStepSizeAnalysisType)" dependingValue="Code specific.Steady state" />
+         <StepSize  type="float"  min="0" max="1e10" default="1e-5" description="Constant coupling step size (s)" 
+                  dependsOn="%(CouplingMenuEntries.CouplingSteps.StepSizeType)" dependingValue="Constant" />
+
+         <!-- Delay is only supported for steady state analysis and without subcycling -->
+         <AnalysisSubcycle type="string" default="%(CouplingMenuEntries.Analysis.AnalysisType).%(CouplingMenuEntries.Solver.SubCycle)" visible="false" />
+         <Delay type="string" default="" dependsOn="%(CouplingMenuEntries.CouplingSteps.AnalysisSubcycle)" dependingValue="Steady state.true" visible="false" />
+         <!-- Give notice of delay value -->
+         <DelayValue type="string" default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayUnit): %(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayValue)"
+                                   description="Delay boundary updates"
+                     dependsOn="%(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayCode)" dependingValue="%(#codename)" />
+     </CouplingSteps>
+                     
+      <Runtime type="panel" description="Runtime control">
+         <cbegType   type="enum"  default="Take latest time" description="Define coupling start" sort="false" infoID="Info.cplStart.time"
+                     dependsOn="%(CouplingMenuEntries.Analysis.AnalysisType)" dependingValue="Transient" >
+                     <enum value="Take latest time"/>
+                     <enum value="Specify time"/>
+         </cbegType>
+         <time_cbeg  type="float"  min="0.0" max="1e10" default="0.0" description="Time of coupling start (s)"
+                     dependsOn="%(CouplingMenuEntries.Runtime.cbegType)" dependingValue="Specify time" />
+         <cbegType   type="enum"  default="Take latest iteration" description="Define coupling start" sort="false" infoID="Info.cplStart.iter"
+                     dependsOn="%(CouplingMenuEntries.Analysis.AnalysisType)" dependingValue="Steady state">
+                     <enum value="Take latest iteration"/>
+                     <enum value="Specify iteration"/>
+         </cbegType>
+         <iter_cbeg  type="int"  min="0" default="0"                description="Iteration number for coupling start"
+                     dependsOn="%(CouplingMenuEntries.Runtime.cbegType)" dependingValue="Specify iteration" />
+         <iter_pend  type="int"  min="0"  default="0"               description="Number of iterations after the coupling"
+                     dependsOn="%(CouplingMenuEntries.Analysis.AnalysisType)" dependingValue="Steady state"/>
+      </Runtime>
+   </CouplingMenuEntries>
+
+   <GoMenuEntries>
+      <JobName type="string" required="true" default="ifem_run" description="Enter a job name" />
+
+<!--      <CouplingStep  type="int" min="1" max="512" default="1" description="Enter the co-simulation step number" /> -->
+
+      <CmdOpts       type="string"  default="" description="Additional command line options" />
+
+<!--      <RestartODB  type="filename" default="" description="Optional old job name for a restart" >
+         <filename suffix=".odb" />
+      </RestartODB>
+
+      <RestartTime  type="float" default="0.0" description="Recovery restart time"
+                    dependsOn="%(GoMenuEntries.RestartODB)" dependingValue="" dependingCondition="false"/>
+
+      <UserRoutines  type="filename" default="" description="User Subroutine" >
+         <filename suffix=".f" />
+         <filename suffix=".o" />
+         <filename suffix=".obj" />
+      </UserRoutines> -->
+
+      <SolverType    type="string" default="%(ModelsMenuEntries.Solver)" description="Ifem solver used" />
+
+<!--      <DoublePrec    type="bool" default="true" description="Double precision" dependsOn="%(ScannerInfo.SolverType)" dependingValue="Explicit"/> -->
+      <ThreadRun    type="panel" default="false" description="Run parallel using OpenMP">
+      <NumThreads   type="int" min="2" max="512" default="2"
+                     description="Number of threads"/>
+      </ThreadRun>
+      <ParallelRun   type="panel" default="false" description="Run parallel using MPI">
+         <NumProcs   type="int" min="2" max="512" default="2" description="Number of processors" />
+
+         <NumDomains type="int" min="2" max="512" default="2" description="Number of parallel domains" dependsOn="%(ScannerInfo.SolverType)" dependingValue="Explicit"/>
+
+         <HostList   type="hostlist"    default=""             description="Optional 'host host ...' to be used" />
+         <HostFile      type="filename" default=""             description="Optional hostlist file" >
+             <filename   suffix=".hosts"    />
+             <filename   suffix=".hostlist" />
+             <filename   suffix=".hostfile" />
+         </HostFile>
+         <DefaultHosts  type="bool"     default="false"  description="Use default hostfile" />
+
+      </ParallelRun>
+
+<!--      <CSERun   type="panel" default="false"
+                     description="Use optional CSE parameters">
+
+         <CSEPort        type="int" min="25000" max="65535" default="48000"  description="CSE Director Port number" />
+         <CSEConfigFile  type="filename" default="" description="Optional configuration file" >
+            <filename   suffix=".xml" />
+         </CSEConfigFile>
+         <CSEPath  type="filename" default="" dironly="true" description="Optional CSE library path" >
+            <filename   suffix="" />
+         </CSEPath>
+      </CSERun>-->
+   </GoMenuEntries>
+
+   <ScannerInfo>
+         <SolverType         type="string" default="Standard" />
+         <ModelDimensions    type="string" default="?" />
+   </ScannerInfo>
+
+   <Scanner>
+     <Environment>
+         <_MPCCI_MODEL_FILE       type="string" default="%(ModelsMenuEntries.ModelFile)" />
+         <_MPCCI_IFEM_SOLVER      type="string" default="%(ModelsMenuEntries.Solver)" />
+         <_MPCCI_IFEM_RELEASE     type="string" default="%(ModelsMenuEntries.Release)" />
+      </Environment>
+   </Scanner>
+
+   <Checker>
+      <Environment>
+         <!-- REQUIRED -->
+         <_MPCCI_MODEL_FILE            type="string" default="%(ModelsMenuEntries.ModelFile)" />
+         <MPCCI_TINFO_SCHEME           type="string" default="%(Starter.Environment.MPCCI_TINFO_SCHEME)" />
+         <MPCCI_TINFO_DURATION         type="string" default="%(Starter.Environment.MPCCI_TINFO_DURATION)" />
+         <MPCCI_TINFO_CSTEP            type="string" default="%(Starter.Environment.MPCCI_TINFO_CSTEP)" />
+         <MPCCI_TINFO_DELAY            type="string" default="%(Starter.Environment.MPCCI_TINFO_DELAY)" />
+
+         <!-- Code specific -->
+         <_MPCCI_IFEM_RELEASE        type="string" default="%(ModelsMenuEntries.Release)" />
+         <_MPCCI_IFEM_SOLVERTYPE     type="string" default="%(ScannerInfo.SolverType)" />
+      </Environment>
+   </Checker>
+
+   <Starter>
+      <Environment>
+         <!-- REQUIRED -->
+         <!-- SCHEME: AnalysisType, CouplingScheme, Algorithm, LeadingCode | InitializingCode -->
+         <MPCCI_TINFO_SCHEME type="string"   default="%(CouplingMenuEntries.Analysis.AnalysisType):
+                                                      %(mpcciserver:CouplingMenuEntries.Analysis.CouplingScheme):
+                                                      %(mpcciserver:CouplingMenuEntries.AlgorithmDef.Algorithm):
+                                                      %(mpcciserver:CouplingMenuEntries.AlgorithmDef.Code):" />
+         <!-- DURATION: time_cbeg, TotalTime, iter_cbeg, MaxCplSteps, iter_pend -->
+         <MPCCI_TINFO_DURATION type="string" default="%(CouplingMenuEntries.Runtime.time_cbeg):
+                                                      %(mpcciserver:CouplingMenuEntries.CouplingDuration.TotalTime):
+                                                      %(CouplingMenuEntries.Runtime.iter_cbeg):
+                                                      %(mpcciserver:CouplingMenuEntries.CouplingDuration.MaxSteps):
+                                                      %(CouplingMenuEntries.Runtime.iter_pend):" />
+         <!-- Explicit: Ifem coupling step size will be handled by Ifem internally.
+              So set CouplingStepSize to 1 indicating that coupling is done every solver step.  -->
+         <!-- CSTEP: CplStepSizeType, CouplingStepSize, MaxIterSteps, InnerIter(ImplIStep) -->
+         <MPCCI_TINFO_CSTEP type="string"    default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSizeType):
+                                                      1:
+                                                      %(mpcciserver:CouplingMenuEntries.CouplingDuration.MaxIterSteps):
+                                                      :"
+                    dependsOn="%(mpcciserver:CouplingMenuEntries.Analysis.CouplingScheme)" dependingValue="Explicit" />
+         <!-- Implicit:  Inner iteration option not set because done on Ifem side -->
+         <!-- CSTEP: CplStepSizeType, CouplingStepSize, MaxIterSteps(Implicit), InnerIter(Implicit) -->
+         <MPCCI_TINFO_CSTEP type="string"    default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.StepSizeType):
+                                                      %(CouplingMenuEntries.CouplingSteps.StepSize):
+                                                      %(mpcciserver:CouplingMenuEntries.CouplingDuration.MaxIterSteps):
+                                                      :"
+                    dependsOn="%(mpcciserver:CouplingMenuEntries.Analysis.CouplingScheme)" dependingValue="Implicit" />
+         <!-- Optional DELAY info: DelayUnit, DelayValue -->
+         <MPCCI_TINFO_DELAY type="string"    default="%(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayUnit):
+                                                      %(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayValue):"
+                  dependsOn="%(mpcciserver:CouplingMenuEntries.CouplingSteps.IdleTimeReduction.DelayedUpdate.DelayCode)" dependingValue="%(#codename)" />
+
+         <_MPCCI_MODEL_FILE       type="string" default="%(ModelsMenuEntries.ModelFile)" />
+         <_MPCCI_IFEM_SOLVER      type="string" default="%(ModelsMenuEntries.Solver)" />						      
+
+         <_MPCCI_IFEM_MODELDIM    type="string" default="%(ScannerInfo.ModelDimensions)" />
+
+         <_MPCCI_IFEM_RELEASE     type="string" default="%(ModelsMenuEntries.Release)" />
+         <_MPCCI_IFEM_JOBNAME     type="string" default="%(GoMenuEntries.JobName)" />
+<!--         <_MPCCI_IFEM_OLDNAME     type="string" default="%(GoMenuEntries.RestartODB)" />
+         <_MPCCI_IFEM_RESTARTTIME type="string" default="%(GoMenuEntries.RestartTime)" />
+         <_MPCCI_IFEM_CSTEP       type="string" default="%(GoMenuEntries.CouplingStep)" />-->
+         <_MPCCI_IFEM_CMDOPTS     type="string" default="%(GoMenuEntries.CmdOpts)" />
+
+<!--         <_MPCCI_IFEM_DOUBLEPREC  type="string" default="%(GoMenuEntries.DoublePrec)" dependsOn="%(GoMenuEntries.SolverType)" dependingValue="Explicit"/> 
+         <_MPCCI_IFEM_USERFTN     type="string" default="%(GoMenuEntries.UserRoutines)" />-->
+         <!-- Export only is necessary if true -->
+         <_MPCCI_IFEM_REND_TIMES        type="string" default="true"
+                  dependsOn="%(CouplingMenuEntries.CouplingSteps.StepSizeType)" dependingValue="Constant | Variable" />
+         <_MPCCI_IFEM_REND_TIMESTEP     type="string" default="%(CouplingMenuEntries.CouplingSteps.StepSize)"
+                  dependsOn="%(CouplingMenuEntries.CouplingSteps.StepSizeType)" dependingValue="Constant | Variable" />
+<!--     <_MPCCI_IFEM_REND_SUBCYCLE     type="string" default="%(CouplingMenuEntries.Solver.SubCycle)" />
+         <_MPCCI_IFEM_REND_TIMEMARKS    type="string" default="%(CouplingMenuEntries.Solver.SubCycle.TimeMarks)" /> -->
+
+         <!-- Parallel -->
+         <_MPCCI_IFEM_PARA_RUN       type="string" default="%(GoMenuEntries.ParallelRun)" />
+         <_MPCCI_IFEM_PARA_NPROCS    type="string" default="%(GoMenuEntries.ParallelRun.NumProcs)" />
+         <_MPCCI_IFEM_PARA_RUNTH     type="string" default="%(GoMenuEntries.ThreadRun)" />
+         <_MPCCI_IFEM_PARA_NTHREADS  type="string" default="%(GoMenuEntries.ThreadRun.NumThreads)"/>
+
+         <_MPCCI_IFEM_PARA_HOSTLIST  type="string" default="%(GoMenuEntries.ParallelRun.HostList)" />
+         <_MPCCI_IFEM_PARA_HOSTFILE  type="string" default="%(GoMenuEntries.ParallelRun.HostFile)" />
+         <_MPCCI_IFEM_PARA_DEFHOSTS  type="string" default="%(GoMenuEntries.ParallelRun.DefaultHosts)" />
+<!--         <_MPCCI_IFEM_PARA_NDOMAINS  type="string" default="%(GoMenuEntries.ParallelRun.NumDomains)" dependsOn="%(GoMenuEntries.SolverType)" dependingValue="Explicit"/>-->
+
+<!--         <_MPCCI_IFEM_CSEOPTIONS type="string" default="%(GoMenuEntries.CSERun)" />
+         <_MPCCI_IFEM_CSEPORT    type="string" default="%(GoMenuEntries.CSERun.CSEPort)" />
+         <_MPCCI_IFEM_CSECONFIG  type="string" default="%(GoMenuEntries.CSERun.CSEConfigFile)" />
+         <_MPCCI_IFEM_CSEPATH    type="string" default="%(GoMenuEntries.CSERun.CSEPath)" />-->
+      </Environment>
+   </Starter>
+
+   <Stopper>
+      <Environment>
+         <_MPCCI_MODEL_FILE    type="string" default="%(ModelsMenuEntries.ModelFile)" />
+         <_MPCCI_IFEM_JOBNAME  type="string" default="%(GoMenuEntries.JobName)" />
+      </Environment>
+   </Stopper>
+
+   <Killer>
+      <Environment>
+         <_MPCCI_MODEL_FILE      type="string" default="%(ModelsMenuEntries.ModelFile)" />
+         <_MPCCI_IFEM_JOBNAME  type="string" default="%(GoMenuEntries.JobName)" />
+      </Environment>
+   </Killer>
+</CODE>
