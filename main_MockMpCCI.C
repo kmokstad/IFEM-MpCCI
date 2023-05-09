@@ -37,6 +37,7 @@ int main (int argc, char** argv)
   Profiler prof(argv[0]);
   utl::profiler->start("Initialization");
   char* infile = nullptr;
+  bool  oldHHT = false;
   IFEM::Init(argc,argv,"MpCCI adapter");
   MpCCIArgs args;
   for (int i = 1; i < argc; ++i) {
@@ -44,6 +45,8 @@ int main (int argc, char** argv)
       ;
     else if (SIMoptions::ignoreOldOptions(argc,argv,i))
       ;
+    else if (!strcmp(argv[i],"-oldHHT"))
+      oldHHT = true;
     else if (!infile) {
       infile = argv[i];
       if (!args.readXML(infile,false))
@@ -67,8 +70,11 @@ int main (int argc, char** argv)
       if (args.form == MpCCIArgs::Formulation::Linear) {
         MpCCI::SIMSolver<Model,NewmarkSIM,MpCCI::MockJob> solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
-      } else {
+      } else if (oldHHT) {
         MpCCI::SIMSolver<Model,NewmarkNLSIM,MpCCI::MockJob> solver(sim);
+        return solver.solveProblem(infile, "Solving structure problem");
+      } else {
+        MpCCI::SIMSolver<Model,HHTSIM,MpCCI::MockJob> solver(sim);
         return solver.solveProblem(infile, "Solving structure problem");
       }
     } else {

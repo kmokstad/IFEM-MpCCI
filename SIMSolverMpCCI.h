@@ -149,7 +149,7 @@ public:
     if (!this->S1.preprocess())
       return 3;
 
-    if (!this->S1.initSystem(this->S1.opt.solver,1))
+    if (!nSim.initEqSystem(false))
       return 4;
 
     nSim.initSol(3);
