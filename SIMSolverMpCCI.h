@@ -113,10 +113,10 @@ public:
   }
 
   //! \brief Parses a data section from an XML element.
-  bool parse(const TiXmlElement* elem) override
+  bool parse(const tinyxml2::XMLElement* elem) override
   {
     if (!strcasecmp(elem->Value(), "mpcci"))  {
-      const TiXmlElement* child = elem->FirstChildElement();
+      const tinyxml2::XMLElement* child = elem->FirstChildElement();
       for (; child; child = child->NextSiblingElement())
         if (!strcasecmp(child->Value(),"saveData"))
           mpcciSerializer = std::make_unique<HDF5Restart>(couplingFile,
@@ -127,7 +127,7 @@ public:
       return true;
     }
     if (!strcasecmp(elem->Value(),"newmarksolver"))  {
-      const TiXmlElement* child = elem->FirstChildElement();
+      const tinyxml2::XMLElement* child = elem->FirstChildElement();
       for (; child; child = child->NextSiblingElement())
         this->tp.parse(child);
     }

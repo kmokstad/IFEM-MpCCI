@@ -16,8 +16,7 @@
 
 #include "SIMargsBase.h"
 
-
-class TiXmlElement;
+class tinyxml2 { XMLElement; }
 
 
 /*!
@@ -42,7 +41,7 @@ public:
 
 protected:
   //! \brief Parse an element from the input file
-  bool parse(const TiXmlElement* elem) override;
+  bool parse(const tinyxml2::XMLElement* elem) override;
 };
 
 #endif

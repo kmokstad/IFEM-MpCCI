@@ -13,10 +13,10 @@
 
 #include "MpCCIArgs.h"
 #include "Utilities.h"
-#include "tinyxml.h"
+#include "tinyxml2.h"
 
 
-bool MpCCIArgs::parse (const TiXmlElement* elem)
+bool MpCCIArgs::parse (const tinyxml2::XMLElement* elem)
 {
   if (!strcasecmp(elem->Value(),"newmarksolver"))
     dynamic = true;
