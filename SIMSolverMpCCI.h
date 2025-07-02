@@ -33,11 +33,8 @@ template<class T1> class SIMSolverStat : public ::SIMSolverStat<T1>,
                                          public MpCCI::GlobalHandler
 {
 public:
-  //! \brief The constructor initializes the reference to the actual solver.
-  explicit SIMSolverStat(T1& s1, const char* head = nullptr) :
-    ::SIMSolverStat<T1>(s1, head)
-  {
-  }
+  //! \brief The constructor forwards to the parent class constructor.
+  explicit SIMSolverStat(T1& s1) : ::SIMSolverStat<T1>(s1) {}
 
   //! \brief Solves the stationary problem.
   int solveProblem(char* infile, const char* heading = nullptr) override
@@ -107,10 +104,8 @@ template<class T1, class Newmark = NewmarkSIM, class Job = MpCCI::Job>
 class SIMSolver : public ::SIMSolver<T1>
 {
 public:
-  //! \brief The constructor initializes the reference to the actual solver.
-  explicit SIMSolver(T1& s1) : ::SIMSolver<T1>(s1)
-  {
-  }
+  //! \brief The constructor forwards to the parent class constructor.
+  explicit SIMSolver(T1& s1) : ::SIMSolver<T1>(s1) {}
 
   //! \brief Parses a data section from an XML element.
   bool parse(const tinyxml2::XMLElement* elem) override
@@ -182,7 +177,7 @@ public:
     while (((status = job.transfer(status, this->tp.time)) == MPCCI_CONV_STATE_CONTINUE ||
             status == MPCCI_CONV_STATE_CONVERGED) && this->advanceStep()) {
       nSim.advanceStep(this->tp, false);
-      if (nSim.solveStep(this->tp, SIM::DYNAMIC) != SIM::CONVERGED) {
+      if (nSim.solveStep(this->tp) != SIM::CONVERGED) {
         job.transfer(MPCCI_CONV_STATE_DIVERGED, this->tp.time);
         return 3;
       }
@@ -191,9 +186,9 @@ public:
       if (!this->saveState(geoBlk,nBlock)) {
         job.transfer(MPCCI_CONV_STATE_DIVERGED, this->tp.time);
         return 4;
-      } else
-        IFEM::pollControllerFifo();
+      }
 
+      IFEM::pollControllerFifo();
       if (this->tp.time.t == this->tp.stopTime)
         break;
     }
@@ -221,7 +216,6 @@ protected:
   std::string couplingSet; //!< Name of set used for coupling, used when running with mocked MpCCI
   std::string couplingFile; //!< Name of file used for coupling data
 };
-
 
 }
 
